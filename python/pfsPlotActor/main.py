@@ -9,7 +9,9 @@ from PyQt5.QtWidgets import QApplication, QMainWindow
 from pfsPlotActor.centralWidget import CentralWidget
 
 
-class PfsPlotActor(QMainWindow):
+class PfsPlot(QMainWindow):
+    """ PfsPlot QT5 mainWindow. """
+
     def __init__(self, reactor, actor, cmdrName, screen):
         QMainWindow.__init__(self)
         self.reactor = reactor
@@ -27,7 +29,8 @@ class PfsPlotActor(QMainWindow):
         self.setConnected(False)
 
     def constructMainCanvas(self):
-        """ """
+        """Construct your main canvas."""
+
         def setMenu():
             self.windowMenu = self.menuBar().addMenu('&Windows')
             self.helpMenu = self.menuBar().addMenu('&?')
@@ -42,17 +45,18 @@ class PfsPlotActor(QMainWindow):
         self.centralWidget().setEnabled(isConnected)
 
     def connectionMade(self):
-        """ For overriding. """
+        """ Connection made to the hub."""
         self.setConnected(True)
         self.actor.cmdr.connectionLost = self.connectionLost
 
     def connectionLost(self, reason):
-        """ For overriding. """
+        """Connection lost from the hub. display useful information to the user."""
         self.setConnected(False)
         if not self.actor.shuttingDown:
             self.centralWidget().showError("Connection Lost", f"Connection to tron has failed : \n{reason}")
 
     def closeEvent(self, QCloseEvent):
+        """Catch close event and disconnect from the hub."""
         self.actor.disconnectActor()
         self.reactor.callFromThread(self.reactor.stop)
         QCloseEvent.accept()
@@ -68,15 +72,14 @@ def main():
     args = parser.parse_args()
 
     import qt5reactor
-
     qt5reactor.install()
     from twisted.internet import reactor
 
     import miniActor
-
     actor = miniActor.connectActor(['hub'])
+
     try:
-        ex = PfsPlotActor(reactor, actor, args.name, screen)
+        ex = PfsPlot(reactor, actor, args.name, screen)
     except:
         actor.disconnectActor()
         raise

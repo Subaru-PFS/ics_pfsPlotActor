@@ -5,25 +5,26 @@ from pfsPlotActor.layout import GridLayout
 
 
 class CentralWidget(QWidget):
-    def __init__(self, mainWindow):
+    """Central widget of pfsPlot main window."""
+
+    def __init__(self, pfsPlot):
         QWidget.__init__(self)
-        self.mainWindow = mainWindow
+        self.pfsPlot = pfsPlot
 
-        self.mainLayout = GridLayout()
-        self.mainLayout.setSpacing(1)
-        self.mainLayout.setContentsMargins(0, 0, 0, 0)
-
-        self.setLayout(self.mainLayout)
+        grid = GridLayout()
+        grid.minimizeContentMargin()
+        self.setLayout(grid)
 
     @property
     def actor(self):
-        return self.pfsGUI.actor
+        return self.pfsPlot.actor
 
     @property
     def isConnected(self):
-        return self.pfsGUI.isConnected
+        return self.pfsPlot.isConnected
 
-    def sendCommand(self, actor, cmdStr, callFunc):
+    def sendMhsCommand(self, actor, cmdStr, callFunc):
+        """Send mhs command."""
         import opscore.actor.keyvar as keyvar
         self.actor.cmdr.bgCall(**dict(actor=actor,
                                       cmdStr=cmdStr,
@@ -31,14 +32,13 @@ class CentralWidget(QWidget):
                                       callFunc=callFunc,
                                       callCodes=keyvar.AllCodes))
 
-    def heartBeat(self):
-        self.tronLayout.tronStatus.dial.heartBeat()
-
     def showError(self, title, error):
-        reply = QMessageBox.critical(self, title, error, QMessageBox.Ok)
+        """Show error message."""
+        return QMessageBox.critical(self, title, error, QMessageBox.Ok)
 
     def setEnabled(self, a0: bool) -> None:
-        widgets = [self.mainLayout.itemAt(i).widget() for i in range(self.mainLayout.count())]
+        """Set widget and all children widgets enabled/disabled."""
+        widgets = [self.layout().itemAt(i).widget() for i in range(self.layout().count())]
 
         for widget in widgets:
             widget.setEnabled(a0)
