@@ -1,7 +1,10 @@
 __author__ = 'alefur'
 
 from PyQt5.QtWidgets import QWidget, QMessageBox
-from pfsPlotActor.layout import GridLayout
+from pfsPlotActor.examples import ccdOverscan
+from pfsPlotActor.layout import GridLayout, VBoxLayout
+from pfsPlotActor.mplCanvas import MplWidget
+from pfsPlotActor.tabwidget import TabWidget
 
 
 class CentralWidget(QWidget):
@@ -13,6 +16,23 @@ class CentralWidget(QWidget):
 
         grid = GridLayout()
         grid.minimizeContentMargin()
+
+        self.tabWidget = TabWidget(self)
+        grid.addWidget(self.tabWidget)
+
+        wid = QWidget()
+        wid.setLayout(VBoxLayout())
+
+        for cam in ['b1', 'r1']:
+            w1 = MplWidget()
+            camOs = ccdOverscan.CcdOverscan(w1.canvas, cam)
+            # adding callbacks
+            self.actor.requireModels([camOs.actor])
+            self.actor.models[camOs.actor].keyVarDict[camOs.key].addCallback(camOs.update)
+            wid.layout().addWidget(w1)
+
+        self.tabWidget.addTab(wid, 'CCD Overscan')
+
         self.setLayout(grid)
 
     @property
@@ -23,12 +43,12 @@ class CentralWidget(QWidget):
     def isConnected(self):
         return self.pfsPlot.isConnected
 
-    def sendMhsCommand(self, actor, cmdStr, callFunc):
+    def sendMhsCommand(self, actor, cmdStr, callFunc, timeLim=120):
         """Send mhs command."""
         import opscore.actor.keyvar as keyvar
         self.actor.cmdr.bgCall(**dict(actor=actor,
                                       cmdStr=cmdStr,
-                                      timeLim=1600,
+                                      timeLim=timeLim,
                                       callFunc=callFunc,
                                       callCodes=keyvar.AllCodes))
 

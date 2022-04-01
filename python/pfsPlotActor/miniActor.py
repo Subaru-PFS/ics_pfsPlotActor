@@ -18,6 +18,15 @@ class OurActor(actorcore.ICC.ICC):
     def disconnectActor(self):
         self.shuttingDown = True
 
+    def requireModels(self, actorList, cmd=None):
+        """ Make sure that we are listening for a given actor keywords. """
+        cmd = self.bcast if cmd is None else cmd
+        actorList = [actorName for actorName in actorList if actorName not in self.models.keys()]
+
+        if actorList:
+            cmd.inform(f"text='connecting model for actors {','.join(actorList)}'")
+            self.addModels(actorList)
+
 
 def connectActor(modelNames):
     theActor = OurActor('pfsplot',
