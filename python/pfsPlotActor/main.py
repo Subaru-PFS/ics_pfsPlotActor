@@ -5,8 +5,26 @@ import os
 import pwd
 import sys
 
-from PyQt5.QtWidgets import QApplication, QMainWindow
+import pfsPlotActor.layout as layout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QDialog, QDialogButtonBox
 from pfsPlotActor.centralWidget import CentralWidget
+
+
+class PlotDialog(QDialog):
+    def __init__(self, mainWindow):
+        QDialog.__init__(self, mainWindow)
+        self.setLayout(layout.VBoxLayout())
+
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Apply | QDialogButtonBox.Close)
+        buttonBox.button(QDialogButtonBox.Apply).clicked.connect(self.apply)
+        buttonBox.button(QDialogButtonBox.Close).clicked.connect(self.close)
+        self.layout().addWidget(buttonBox)
+
+        self.setWindowTitle('Add New Plot')
+        self.setVisible(True)
+
+    def apply(self):
+        pass
 
 
 class PfsPlot(QMainWindow):
@@ -35,8 +53,17 @@ class PfsPlot(QMainWindow):
             self.windowMenu = self.menuBar().addMenu('&Windows')
             self.helpMenu = self.menuBar().addMenu('&?')
 
+        def setActions():
+            addPlot = QAction('add Plot', self)
+            addPlot.triggered.connect(addPlotDialog)
+            self.windowMenu.addAction(addPlot)
+
+        def addPlotDialog():
+            dialog = PlotDialog(self)
+
         self.setCentralWidget(CentralWidget(self))
         setMenu()
+        setActions()
         self.setWindowTitle(self.cmdrName)
 
     def setConnected(self, isConnected):
@@ -63,13 +90,22 @@ class PfsPlot(QMainWindow):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--name', default=pwd.getpwuid(os.getuid()).pw_name, type=str, nargs='?', help='cmdr name')
+    parser.add_argument('--fontsize', default=8, type=int, nargs='?', help='application font size')
+    args = parser.parse_args()
+
     app = QApplication(sys.argv)
     screen = app.desktop().screenGeometry()
-    parser = argparse.ArgumentParser()
 
-    parser.add_argument('--name', default=pwd.getpwuid(os.getuid()).pw_name, type=str, nargs='?', help='cmdr name')
+    # setting user fontsize for Qt
+    font = app.font()
+    font.setPointSize(args.fontsize)
+    app.setFont(font)
 
-    args = parser.parse_args()
+    # setting user fontsize for matplotlib
+    import matplotlib
+    matplotlib.rcParams.update({'font.size': args.fontsize})
 
     import qt5reactor
     qt5reactor.install()
