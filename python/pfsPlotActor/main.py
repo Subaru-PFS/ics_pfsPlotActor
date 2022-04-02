@@ -5,26 +5,11 @@ import os
 import pwd
 import sys
 
-import pfsPlotActor.layout as layout
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QDialog, QDialogButtonBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QAction
 from pfsPlotActor.centralWidget import CentralWidget
 
 
-class PlotDialog(QDialog):
-    def __init__(self, mainWindow):
-        QDialog.__init__(self, mainWindow)
-        self.setLayout(layout.VBoxLayout())
 
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Apply | QDialogButtonBox.Close)
-        buttonBox.button(QDialogButtonBox.Apply).clicked.connect(self.apply)
-        buttonBox.button(QDialogButtonBox.Close).clicked.connect(self.close)
-        self.layout().addWidget(buttonBox)
-
-        self.setWindowTitle('Add New Plot')
-        self.setVisible(True)
-
-    def apply(self):
-        pass
 
 
 class PfsPlot(QMainWindow):
@@ -43,7 +28,8 @@ class PfsPlot(QMainWindow):
         self.constructMainCanvas()
         #
         self.show()
-        self.move(self.screenWidth * 0.1, self.screenHeight * 0.1)
+        self.move(self.screenWidth * 0.5, self.screenHeight * 0.5)
+        self.resize(self.screenWidth * 0.2, self.screenHeight * 0.2)
         self.setConnected(False)
 
     def constructMainCanvas(self):
@@ -54,12 +40,9 @@ class PfsPlot(QMainWindow):
             self.helpMenu = self.menuBar().addMenu('&?')
 
         def setActions():
-            addPlot = QAction('add Plot', self)
-            addPlot.triggered.connect(addPlotDialog)
-            self.windowMenu.addAction(addPlot)
-
-        def addPlotDialog():
-            dialog = PlotDialog(self)
+            addTab = QAction('add Tab', self)
+            addTab.triggered.connect(self.centralWidget().newTabDialog)
+            self.windowMenu.addAction(addTab)
 
         self.setCentralWidget(CentralWidget(self))
         setMenu()

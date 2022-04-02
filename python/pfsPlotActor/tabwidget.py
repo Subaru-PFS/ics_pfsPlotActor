@@ -1,7 +1,9 @@
 __author__ = 'alefur'
 
+import pfsPlotActor.layout as layout
+import pfsPlotActor.misc as misc
 from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtWidgets import QTabBar, QTabWidget, QLineEdit
+from PyQt5.QtWidgets import QTabBar, QTabWidget, QLineEdit, QWidget, QPushButton
 
 
 class EditableTabBar(QTabBar):
@@ -40,6 +42,24 @@ class EditableTabBar(QTabBar):
             self.setTabText(index, self._editor.text())
 
 
+class PlotBrowser(QPushButton):
+    def __init__(self, *args, **kwargs):
+        QPushButton.__init__(self, *args, **kwargs)
+        self.setMaximumWidth(50)
+        self.setIcon(misc.Icon('graph'))
+
+
+class TabContainer(QWidget):
+    def __init__(self, nRows, nCols):
+        QWidget.__init__(self)
+        grid = layout.GridLayout()
+        for row in range(nRows):
+            for col in range(nCols):
+                grid.addWidget(PlotBrowser(), row, col)
+
+        self.setLayout(grid)
+
+
 class TabWidget(QTabWidget):
     def __init__(self, centralWidget):
         QTabWidget.__init__(self)
@@ -48,6 +68,10 @@ class TabWidget(QTabWidget):
 
         self.tabCloseRequested.connect(self.closeTab)
         self.currentChanged.connect(self.changeTab)
+
+    def newTab(self, title, nRows, nCols):
+        container = TabContainer(nRows, nCols)
+        self.addTab(container, title)
 
     def closeTab(self):
         """ close tab callback"""
