@@ -2,7 +2,7 @@ __author__ = 'alefur'
 
 from PyQt5.QtWidgets import QGridLayout, QVBoxLayout, QHBoxLayout
 
-spacing = 2
+spacing = 1
 
 
 class GridLayout(QGridLayout):
@@ -14,7 +14,6 @@ class GridLayout(QGridLayout):
 
     def minimizeContentMargin(self):
         """ minimize content margin as much as you can."""
-        self.setSpacing(1)
         self.setContentsMargins(0, 0, 0, 0)
 
 
