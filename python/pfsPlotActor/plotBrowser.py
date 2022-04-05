@@ -3,6 +3,7 @@ __author__ = 'alefur'
 import glob
 import inspect
 import os
+from functools import partial
 from importlib.util import find_spec
 
 import pfsPlotActor.layout as layout
@@ -15,8 +16,8 @@ from PyQt5.QtWidgets import QPushButton, QDialog, QTableWidget, QTableWidgetItem
 class AddPlotButton(QPushButton):
     """Simple button to select the plot class in the table."""
 
-    def __init__(self):
-        QPushButton.__init__(self)
+    def __init__(self, *args, **kwargs):
+        QPushButton.__init__(self, *args, **kwargs)
         self.setMaximumWidth(50)
         self.setIcon(misc.Icon('add'))
 
@@ -25,7 +26,6 @@ class TableRow(object):
     """Object representing a single row in the tableWidget."""
 
     def __init__(self, plotTable, modPath, className, classType):
-        self.plotTable = plotTable
         self.classType = classType
 
         self.modPath = QTableWidgetItem(modPath)
@@ -37,28 +37,11 @@ class TableRow(object):
         self.key = QTableWidgetItem(classType.key)
 
         self.addButton = AddPlotButton()
-        self.addButton.clicked.connect(self.addPlotClicked)
+        self.addButton.clicked.connect(partial(plotTable.addPlotClicked, self))
 
     @property
     def items(self):
         return [self.modPath, self.className, self.actor, self.key, self.addButton]
-
-    def addPlotClicked(self):
-        # updating default param
-        self.classType.actor = self.actor.text()
-        if not self.classType.actor:
-            QMessageBox.critical(self.plotTable, "Add plot failed !", "Actor field needs to be filled in...",
-                                 QMessageBox.Ok)
-            return
-
-        self.classType.key = self.key.text()
-        if not self.classType.key:
-            QMessageBox.critical(self.plotTable, "Add plot failed !", "key field needs to be filled in...",
-                                 QMessageBox.Ok)
-            return
-
-        # class plotDialog.setPlotClass
-        self.plotTable.parent().setPlotClass(self.classType)
 
 
 class PlotTable(QTableWidget):
@@ -81,7 +64,7 @@ class PlotTable(QTableWidget):
     @property
     def actualWidth(self):
         # not very happy with that but...
-        return sum([self.columnWidth(j) for j in range(len(PlotTable.columns))]) + 60
+        return sum([self.columnWidth(j) for j in range(len(PlotTable.columns))]) + 35
 
     def autoResize(self, item=None):
         """Resize all columns to fit content."""
@@ -89,6 +72,22 @@ class PlotTable(QTableWidget):
             self.resizeColumnToContents(j)
 
         self.parent().resize(self.actualWidth, self.parent().height())
+
+    def addPlotClicked(self, tableRow, *args):
+        """Called when the user click on the add plot button."""
+        # updating default actor and key.
+        tableRow.classType.actor = tableRow.actor.text()
+        if not tableRow.classType.actor:
+            QMessageBox.critical(self, "Add plot failed !", "Actor field needs to be filled in...", QMessageBox.Ok)
+            return
+
+        tableRow.classType.key = tableRow.key.text()
+        if not tableRow.classType.key:
+            QMessageBox.critical(self, "Add plot failed !", "Key field needs to be filled in...", QMessageBox.Ok)
+            return
+
+        # class plotDialog.setPlotClass
+        self.parent().setPlotClass(tableRow.classType)
 
 
 class PlotBrowserDialog(QDialog):
