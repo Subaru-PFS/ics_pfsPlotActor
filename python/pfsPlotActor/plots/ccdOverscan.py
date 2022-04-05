@@ -7,32 +7,29 @@ from astropy.stats import sigma_clip
 
 
 class CcdOverscan(livePlot.LivePlot):
-    label = 'CCD Overscan'
     key = 'filepath'
-
-    def __init__(self, canvas, cam):
-        self.actor = f'ccd_{cam}'
-        livePlot.LivePlot.__init__(self, canvas)
+    # needs to be overridden by the user.
+    actor = 'ccd_{cam}'
 
     def initialize(self):
-        """ """
+        """Initialize my axes, ax1 to plot the bias level wrt row, ax2 for the residual histograms."""
         gs = self.fig.add_gridspec(8, 5, wspace=0.05, hspace=0.05)
-
         self.ax1 = [self.fig.add_subplot(gs[nAmp, :-1]) for nAmp in range(8)]
         self.ax2 = [self.fig.add_subplot(gs[nAmp, -1]) for nAmp in range(8)]
         return self.ax1 + self.ax2
 
     def identify(self, keyvar):
-        """ """
+        """Reconstruct the absolute filepath from the latest generated filepath."""
         [root, night, fname] = keyvar.getValue()
         args = [root, night, 'sps', fname]
         filepath = os.path.join(*args)
         return dict(filepath=filepath)
 
     def plot(self, filepath, nSigma=5):
-        """ """
+        """Plot the latest dataset."""
         exp = geom.Exposure(filepath)
         ampIms, osIms, _ = exp.splitImage()
+        # clipped-mean per-row
         clipped = sigma_clip(osIms, axis=2)
         levelPerRow = clipped.mean(axis=2)
 
@@ -42,10 +39,12 @@ class CcdOverscan(livePlot.LivePlot):
             ax1 = self.ax1[nAmp]
             ax2 = self.ax2[nAmp]
 
-            yi = levelPerRow[nAmp] + np.random.normal(size=levelPerRow.shape[1])
+            yi = levelPerRow[nAmp]
+            # model as a simple 2-deg-polynomial.
             xi = np.arange(len(levelPerRow[nAmp]))
             p = np.polyfit(xi, yi, deg=2)
             model = np.polyval(p, xi)
+            # mask the residuals.
             resid = yi - model
             mask = sigma_clip(resid.ravel(), sigma=nSigma)
 

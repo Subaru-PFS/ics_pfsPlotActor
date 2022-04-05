@@ -2,6 +2,10 @@ from collections.abc import Iterable
 
 
 class LivePlot(object):
+    # actor and key that to attach the callback to.
+    actor = None
+    key = None
+
     def __init__(self, canvas):
         self.canvas = canvas
 
