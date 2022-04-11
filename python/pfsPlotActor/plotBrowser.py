@@ -1,14 +1,14 @@
 __author__ = 'alefur'
 
-import glob
 import inspect
-import os
+import pkgutil
 from functools import partial
 from importlib.util import find_spec
 
 import pfsPlotActor.layout as layout
 import pfsPlotActor.livePlot as livePlot
 import pfsPlotActor.misc as misc
+import pfsPlotActor.plots as plots
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QPushButton, QDialog, QTableWidget, QTableWidgetItem, QMessageBox
 
@@ -105,12 +105,8 @@ class PlotBrowserDialog(QDialog):
     def inspectPlotDefinition(self):
         """Inspect pfsPlotActor.plots and look for livePlot subclasses."""
         livePlots = []
-        mods = glob.glob(os.path.join(os.path.expandvars('$ICS_PFSPLOTACTOR_DIR'), 'python', 'pfsPlotActor',
-                                      'plots', '*.py'))
 
-        for modulePath in mods:
-            __, mod = os.path.split(modulePath)
-            modName, __ = os.path.splitext(mod)
+        for __, modName, __ in pkgutil.iter_modules(plots.__path__):
             modPath = f'pfsPlotActor.plots.{modName}'
             spec = find_spec(modPath)
             module = spec.loader.load_module()
