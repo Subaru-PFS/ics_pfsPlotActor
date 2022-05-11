@@ -39,7 +39,7 @@ class ConvergenceMap(livePlot.LivePlot):
 
         """load the convergence data"""
 
-        [visit] = keyvar.getValue()
+        visit = keyvar.getValue()
         return self.loadConvergence(visit)
 
     def loadConvergence(self, visitId):
@@ -74,7 +74,7 @@ class ConvergenceMap(livePlot.LivePlot):
         """Plot the latest dataset."""
 
         fig = self.fig
-        ax = self.ax
+        ax = self.axes[0]
 
         # calculate distance from targets at this iteration
 
@@ -86,7 +86,7 @@ class ConvergenceMap(livePlot.LivePlot):
                         self.calibModel.centers.imag[convergeData['cobra_id'].values - 1],
                         c=dist, marker='o', s=20)
 
-        fig.colorbar(sc)
+        fig.colorbar(sc, ax=ax)
 
         # some labels
         ax.set_xlabel("X (mm)")
@@ -97,3 +97,13 @@ class ConvergenceMap(livePlot.LivePlot):
         ax.set_title(tString)
 
         ax.set_aspect('equal')
+
+    def clear(self):
+        """Clear your axes."""
+
+        livePlot.LivePlot.clear(self)
+        try:
+            ax, cax = self.fig.get_axes()
+            cax.remove()
+        except ValueError:
+           pass
