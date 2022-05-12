@@ -28,7 +28,7 @@ class LivePlot(object):
 
     def clear(self):
         """Clear your axes."""
-        for ax in self.fig.get_axes():
+        for ax in self.axes:
             ax.cla()
 
     def identify(self, keyvar):

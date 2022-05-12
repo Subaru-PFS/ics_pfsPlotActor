@@ -35,15 +35,18 @@ class ConvergenceMap(livePlot.LivePlot):
 
     goodIdx, badIdx = getCobraStatusIndex(calibModel)
 
+    def initialize(self):
+        """Initialize your axes and colorbar"""
+        self.colorbar = None
+        ax = self.fig.add_subplot(111)
+        return ax
+
     def identify(self, keyvar):
-
         """load the convergence data"""
-
         visit = keyvar.getValue()
         return self.loadConvergence(visit)
 
     def loadConvergence(self, visitId):
-
         """
         load data to plot the results of a convergence run.
         This does a join on cobra_target and cobra_match to get both target and actual positions.
@@ -70,9 +73,7 @@ class ConvergenceMap(livePlot.LivePlot):
         return dict(visitId=visitId, convergeData=convergeData, iterVal=nIter)
 
     def plot(self, visitId, convergeData, iterVal):
-
         """Plot the latest dataset."""
-
         fig = self.fig
         ax = self.axes[0]
 
@@ -86,7 +87,13 @@ class ConvergenceMap(livePlot.LivePlot):
                         self.calibModel.centers.imag[convergeData['cobra_id'].values - 1],
                         c=dist, marker='o', s=20)
 
-        fig.colorbar(sc, ax=ax)
+        if self.colorbar is None:
+            # creating new colorbar.
+            self.colorbar = fig.colorbar(sc, ax=ax)
+
+        else:
+            # or update existing one.
+            self.colorbar.update_normal(sc)
 
         # some labels
         ax.set_xlabel("X (mm)")
@@ -97,13 +104,3 @@ class ConvergenceMap(livePlot.LivePlot):
         ax.set_title(tString)
 
         ax.set_aspect('equal')
-
-    def clear(self):
-        """Clear your axes."""
-
-        livePlot.LivePlot.clear(self)
-        try:
-            ax, cax = self.fig.get_axes()
-            cax.remove()
-        except ValueError:
-           pass
