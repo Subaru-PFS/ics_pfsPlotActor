@@ -3,6 +3,7 @@ __author__ = 'alefur'
 import inspect
 import pkgutil
 from functools import partial
+from importlib import reload
 from importlib.util import find_spec
 
 import pfsPlotActor.layout as layout
@@ -20,6 +21,15 @@ class AddPlotButton(QPushButton):
         QPushButton.__init__(self, *args, **kwargs)
         self.setMaximumWidth(50)
         self.setIcon(misc.Icon('add'))
+
+
+class RefreshPlotTableButton(QPushButton):
+    """Simple button to select the plot class in the table."""
+
+    def __init__(self, *args, **kwargs):
+        QPushButton.__init__(self, *args, **kwargs)
+        self.setMaximumWidth(50)
+        self.setIcon(misc.Icon('refresh'))
 
 
 class TableRow(object):
@@ -64,7 +74,7 @@ class PlotTable(QTableWidget):
     @property
     def actualWidth(self):
         # not very happy with that but...
-        return sum([self.columnWidth(j) for j in range(len(PlotTable.columns))]) + 35
+        return sum([self.columnWidth(j) for j in range(len(PlotTable.columns))]) + 40
 
     def autoResize(self, item=None):
         """Resize all columns to fit content."""
@@ -93,17 +103,33 @@ class PlotTable(QTableWidget):
 class PlotBrowserDialog(QDialog):
     """Dialog to choose which plotClass/plotWindow to add in the selected space."""
 
-    def __init__(self, browseButton):
-        QDialog.__init__(self, browseButton)
+    def __init__(self):
+        QDialog.__init__(self)
+        self.plotTable = None
+        self.clickedFrom = None
         self.setLayout(layout.VBoxLayout())
 
-        plotTable = PlotTable(self, self.inspectPlotDefinition())
-        self.layout().addWidget(plotTable)
+        refreshButton = RefreshPlotTableButton()
+        refreshButton.clicked.connect(self.refreshPlotTableButton)
+        self.layout().addWidget(refreshButton)
+
+        self.refreshPlotTableButton()
         self.setWindowTitle('Add New Plot')
-        self.setVisible(True)
+        # self.setVisible(True)
+        # self.hide()
+
+    def refreshPlotTableButton(self):
+        """"""
+        if self.plotTable is not None:
+            self.layout().removeWidget(self.plotTable)
+            self.plotTable.deleteLater()
+
+        self.plotTable = PlotTable(self, self.inspectPlotDefinition())
+        self.layout().addWidget(self.plotTable)
 
     def inspectPlotDefinition(self):
         """Inspect pfsPlotActor.plots and look for livePlot subclasses."""
+        reload(plots)
         livePlots = []
 
         for __, modName, __ in pkgutil.iter_modules(plots.__path__):
@@ -117,10 +143,18 @@ class PlotBrowserDialog(QDialog):
 
     def setPlotClass(self, classType):
         """Call tabContainer with classType and the button to be replaced."""
-        browseButton = self.parent()
+        browseButton = self.clickedFrom
         tabContainer = browseButton.parent()
         tabContainer.setPlotWidget(classType, browseButton)
         self.close()
+
+    def browse(self, browseButton):
+        """ """
+        self.clickedFrom = browseButton
+        self.show()
+
+    def close(self) -> bool:
+        self.hide()
 
 
 class PlotBrowserButton(QPushButton):
@@ -136,4 +170,4 @@ class PlotBrowserButton(QPushButton):
 
     def browse(self):
         """Just create plotBrowserDialog."""
-        dialog = PlotBrowserDialog(self)
+        self.parent().tabWidget.plotBrowserDialog.browse(self)

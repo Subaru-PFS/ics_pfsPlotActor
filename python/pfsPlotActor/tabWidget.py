@@ -2,6 +2,7 @@ __author__ = 'alefur'
 
 import pfsPlotActor.layout as layout
 import pfsPlotActor.tabContainer as tabContainer
+import pfsPlotActor.plotBrowser as plotBrowser
 from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QSpinBox, QLineEdit, QLabel, QGroupBox, QMessageBox, QTabBar, \
     QTabWidget
@@ -98,6 +99,7 @@ class TabWidget(QTabWidget):
 
     def __init__(self, pfsPlot):
         self.pfsPlot = pfsPlot
+        self.plotBrowserDialog = plotBrowser.PlotBrowserDialog()
 
         QTabWidget.__init__(self)
         self.setTabsClosable(True)
@@ -139,3 +141,6 @@ class TabWidget(QTabWidget):
         """Set widget and all children widgets enabled/disabled."""
         for index in range(self.count()):
             self.widget(index).setEnabled(a0)
+
+    def showError(self, title, error):
+        reply = QMessageBox.critical(self, title, error, QMessageBox.Ok)
