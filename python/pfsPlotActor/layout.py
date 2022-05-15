@@ -12,9 +12,15 @@ class GridLayout(QGridLayout):
         QGridLayout.__init__(self, *args, **kwargs)
         self.setSpacing(spacing)
 
-    def minimizeContentMargin(self):
+    def minimizeContentMargin(self, left=0, top=0, right=0, bottom=0):
         """ minimize content margin as much as you can."""
-        self.setContentsMargins(0, 0, 0, 0)
+        self.setContentsMargins(left, top, right, bottom)
+
+
+class GBoxValue(GridLayout):
+    def __init__(self):
+        GridLayout.__init__(self)
+        self.minimizeContentMargin(top=1)
 
 
 class VBoxLayout(QVBoxLayout):
@@ -24,6 +30,10 @@ class VBoxLayout(QVBoxLayout):
         QVBoxLayout.__init__(self, *args, **kwargs)
         self.setSpacing(spacing)
 
+    def minimizeContentMargin(self, left=0, top=0, right=0, bottom=0):
+        """ minimize content margin as much as you can."""
+        self.setContentsMargins(left, top, right, bottom)
+
 
 class HBoxLayout(QHBoxLayout):
     """Overdefine Qt QHBoxLayout."""
@@ -31,3 +41,7 @@ class HBoxLayout(QHBoxLayout):
     def __init__(self, *args, **kwargs):
         QHBoxLayout.__init__(self, *args, **kwargs)
         self.setSpacing(spacing)
+
+    def minimizeContentMargin(self, left=0, top=0, right=0, bottom=0):
+        """ minimize content margin as much as you can."""
+        self.setContentsMargins(left, top, right, bottom)

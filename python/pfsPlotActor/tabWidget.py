@@ -1,8 +1,8 @@
 __author__ = 'alefur'
 
 import pfsPlotActor.layout as layout
-import pfsPlotActor.tabContainer as tabContainer
 import pfsPlotActor.plotBrowser as plotBrowser
+import pfsPlotActor.tabContainer as tabContainer
 from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QSpinBox, QLineEdit, QLabel, QGroupBox, QMessageBox, QTabBar, \
     QTabWidget

@@ -25,6 +25,8 @@ class TabContainer(QWidget):
         # creating the object with a canvas.
         w1 = mplCanvas.MplWidget()
         obj = classType(w1.canvas)
+        # add dedicated widgets to tweak the plots.
+        w1.addTweakingWidgets(obj)
         # adding callbacks
         self.tabWidget.actor.requireModels([obj.actor])
         self.tabWidget.actor.models[obj.actor].keyVarDict[obj.key].addCallback(obj.update)
