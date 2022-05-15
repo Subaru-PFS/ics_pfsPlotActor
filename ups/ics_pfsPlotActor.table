@@ -1,4 +1,6 @@
 setupRequired(tron_actorcore)
+setupRequired(pfs_utils)
+setupRequired(ics_cobraCharmer)
 setupRequired(ics_actorkeys)
 setupRequired(ics_xcu_fpga)
 setupRequired(spt_operational_database)

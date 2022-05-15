@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterable
 
 
@@ -49,7 +50,11 @@ class LivePlot(object):
         self.keyvar = keyvar
 
         self.clear()
-        self.plot(**dataId, **self.tweakDict)
+        try:
+            self.plot(**dataId, **self.tweakDict)
+        except Exception as e:
+            logging.warning(e)
+
         self.canvas.draw()
 
     def plot(self, *args, **kwargs):

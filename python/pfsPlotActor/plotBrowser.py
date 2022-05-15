@@ -39,7 +39,7 @@ class PlotBrowserDialog(QDialog):
         self.setWindowTitle('Add New Plot')
 
     def refreshPlotTable(self):
-        """"""
+        """Dynamically refresh the available plots table."""
         if self.plotTable is not None:
             self.layout().removeWidget(self.plotTable)
             self.plotTable.deleteLater()
@@ -69,11 +69,12 @@ class PlotBrowserDialog(QDialog):
         self.close()
 
     def browse(self, browseButton):
-        """ """
+        """Temporary reference browseButton to the dialog."""
         self.clickedFrom = browseButton
         self.show()
 
     def close(self) -> bool:
+        """For performance sake, dont close it, just hide it."""
         self.hide()
 
 

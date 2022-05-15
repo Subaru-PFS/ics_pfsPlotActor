@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QCheckBox, QGroupBox, QSizePolicy, QLineEdit
 
 
 class Tweak(QGroupBox):
+    """Editable field to be parsed to updatePlot function."""
     valueType = QLineEdit
 
     def __init__(self, title):
