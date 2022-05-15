@@ -42,3 +42,4 @@ class SpotBrightness(pfiUtils.ConvergencePlot):
         ax.set_xlabel("X (mm)")
         ax.set_ylabel("Y (mm)")
         ax.set_aspect('equal')
+        ax.format_coord = pfiUtils.cobraIdFiberIdFormatter

@@ -1,8 +1,15 @@
 import numpy as np
+import pandas as pd
 import pfsPlotActor.livePlot as livePlot
 from ics.cobraCharmer import func
 from opdb import opdb
 from pfs.utils.butler import Butler
+from pfs.utils.fiberids import FiberIds
+
+gfm = FiberIds()
+gfmDf = pd.DataFrame(gfm.data)
+cobraId = np.arange(2394) + 1
+cobraPosition = gfmDf.set_index('cobraId').loc[cobraId].reset_index()[['cobraId', 'fiberId', 'x', 'y']].to_numpy()
 
 
 def getCobraStatusIndex(calibModel):
@@ -19,6 +26,12 @@ def getCobraStatusIndex(calibModel):
     badIdx = np.array(badNums, dtype='i4') - 1
 
     return goodIdx, badIdx
+
+
+def cobraIdFiberIdFormatter(x, y):
+    """"""
+    [cobraId, fiberId, cx, cy] = cobraPosition[np.argmin(np.hypot(cobraPosition[:, 2] - x, cobraPosition[:, 3] - y))]
+    return f'x=%d. y=%d. cobraId=%d fiberId=%d' % (x, y, cobraId, fiberId)
 
 
 class ConvergencePlot(livePlot.LivePlot):

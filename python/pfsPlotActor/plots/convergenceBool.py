@@ -45,3 +45,4 @@ class ConvergenceBool(pfiUtils.ConvergencePlot):
         ax.set_title(tString)
 
         ax.set_aspect('equal')
+        ax.format_coord = pfiUtils.cobraIdFiberIdFormatter

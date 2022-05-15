@@ -43,6 +43,7 @@ class SequencePlot(pfiUtils.ConvergencePlot):
 
         tString = f'pfsVisitId = {visitId:d}'
         ax.set_title(tString)
+        ax.format_coord = pfiUtils.cobraIdFiberIdFormatter
 
         # various optional overlays
         if centrePos:
@@ -52,7 +53,7 @@ class SequencePlot(pfiUtils.ConvergencePlot):
         if blackDots:
             self.overlayBlackDots(ax, cobraNum=cobraNum)
         if badCobras:
-            self.overlayBadCobras(ax, cobraNum=cobraNum)
+            self.overlayBadCobras(ax)
         if patrolRegion:
             self.overlayPatrolRegion(ax, cobraNum=cobraNum)
         if ff:
@@ -81,12 +82,12 @@ class SequencePlot(pfiUtils.ConvergencePlot):
         ind = self.cobraIndices(cobraNum)
         ax.scatter(self.calibModel.centers[ind].real, self.calibModel.centers[ind].imag, c='black', marker='o', s=25)
 
-    def overlayBadCobras(self, ax, cobraNum=None):
+    def overlayBadCobras(self, ax):
         """Overlay centre positions of cobra patrol regions on given axis.
         if cobraNum == None do for all good cobras, else for cobraNum
         """
-        ind = self.cobraIndices(cobraNum)
-        ax.scatter(self.calibModel.centers[ind].real, self.calibModel.centers[ind].imag, c='black', marker='*', s=25)
+        ax.scatter(self.calibModel.centers[self.badIdx].real, self.calibModel.centers[self.badIdx].imag, c='black',
+                   marker='*', s=25)
 
     def overlayHardStop(self, ax, cobraNum=None):
         """Overlay theta hard stops
