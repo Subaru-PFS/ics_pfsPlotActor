@@ -26,7 +26,7 @@ class MplWidget(QWidget):
         self.setLayout(vbox)
 
     def addTweakingWidgets(self, livePlot):
-        """ """
+        """Inspect livePlot.plot function argument and dynamically add editable fields."""
         hbox = layout.HBoxLayout()
         tweakDict = dict()
         signature = inspect.signature(livePlot.plot)

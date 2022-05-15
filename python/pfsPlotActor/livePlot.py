@@ -1,5 +1,6 @@
-from collections.abc import Iterable
 import logging
+from collections.abc import Iterable
+
 
 class LivePlot(object):
     # actor and key that to attach the callback to.
