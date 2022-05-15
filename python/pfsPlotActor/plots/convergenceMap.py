@@ -18,7 +18,7 @@ class ConvergenceMap(pfiUtils.ConvergencePlot):
 
         # filter the dataframe for the iteration value
         iterData = convergeData.query(f'iteration=={nIter}')
-        if not iterData:
+        if iterData.empty:
             return
 
         # calculate distance from targets at this iteration

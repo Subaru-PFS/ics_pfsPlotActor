@@ -101,8 +101,6 @@ class SequencePlot(pfiUtils.ConvergencePlot):
         self._addLine(ax, self.calibModel.centers[ind], length[ind], self.calibModel.tht1[ind], color='black',
                       linewidth=0.5, linestyle='-.')
 
-        return ax
-
     def overlayBlackDots(self, ax, cobraNum=None):
         """Overlay black dots.
         if cobraNum == None do for all good cobras, else for cobraNum
@@ -114,8 +112,6 @@ class SequencePlot(pfiUtils.ConvergencePlot):
                            color='grey', fill=True, alpha=0.5)
             ax.add_artist(e)
 
-        return
-
     def _addLine(self, ax, centers, length, angle, **kwargs):
 
         x = length * np.cos(angle)
@@ -123,5 +119,3 @@ class SequencePlot(pfiUtils.ConvergencePlot):
 
         for i in range(len(centers)):
             ax.plot([centers.real[i], centers.real[i] + x[i]], [centers.imag[i], centers.imag[i] + y[i]], **kwargs)
-
-        return ax
