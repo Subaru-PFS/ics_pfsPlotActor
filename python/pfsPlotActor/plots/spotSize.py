@@ -55,8 +55,8 @@ class SpotSize(pfiUtils.ConvergencePlot):
         ax1.set_xlabel("X (mm)")
         ax1.set_ylabel("Y (mm)")
 
-        ax1.format_coord = pfiUtils.cobraIdFiberIdFormatter
-        ax2.format_coord = pfiUtils.cobraIdFiberIdFormatter
+        ax1.format_coord = self.cobraIdFiberIdFormatter
+        ax2.format_coord = self.cobraIdFiberIdFormatter
 
         # colour bar stuff
         if self.colorbar is None:

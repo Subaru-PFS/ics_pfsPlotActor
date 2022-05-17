@@ -50,4 +50,4 @@ class ConvergenceMap(pfiUtils.ConvergencePlot):
         ax.set_title(tString)
 
         ax.set_aspect('equal')
-        ax.format_coord = pfiUtils.cobraIdFiberIdFormatter
+        ax.format_coord = self.cobraIdFiberIdFormatter

@@ -43,7 +43,7 @@ class SequencePlot(pfiUtils.ConvergencePlot):
 
         tString = f'pfsVisitId = {visitId:d}'
         ax.set_title(tString)
-        ax.format_coord = pfiUtils.cobraIdFiberIdFormatter
+        ax.format_coord = self.cobraIdFiberIdFormatter
 
         # various optional overlays
         if centrePos:

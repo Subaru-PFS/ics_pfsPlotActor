@@ -6,11 +6,6 @@ from opdb import opdb
 from pfs.utils.butler import Butler
 from pfs.utils.fiberids import FiberIds
 
-gfm = FiberIds()
-gfmDf = pd.DataFrame(gfm.data)
-cobraId = np.arange(2394) + 1
-cobraPosition = gfmDf.set_index('cobraId').loc[cobraId].reset_index()[['cobraId', 'fiberId', 'x', 'y']].to_numpy()
-
 
 def getCobraStatusIndex(calibModel):
     """Retrieve good/bad cobra index."""
@@ -28,10 +23,14 @@ def getCobraStatusIndex(calibModel):
     return goodIdx, badIdx
 
 
-def cobraIdFiberIdFormatter(x, y):
-    """"""
-    [cobraId, fiberId, cx, cy] = cobraPosition[np.argmin(np.hypot(cobraPosition[:, 2] - x, cobraPosition[:, 3] - y))]
-    return f'x=%d. y=%d. cobraId=%d fiberId=%d' % (x, y, cobraId, fiberId)
+def cobraPositionToFiber(db):
+    """Return cobraId,fiberId,x,y from opdb/grandfibermap."""
+    sql = 'SELECT cobra_id,cobra_geometry_calib_id,center_x_mm,center_y_mm FROM cobra_geometry ' \
+          'WHERE cobra_geometry_calib_id=(SELECT MAX(cobra_geometry_calib_id) from cobra_geometry)'
+    df = db.fetch_query(sql)
+    gfmDf = pd.DataFrame(FiberIds().data)
+    df['fiberId'] = gfmDf.set_index('cobraId').loc[df.cobra_id].fiberId.to_numpy()
+    return df[['cobra_id', 'fiberId', 'center_x_mm', 'center_y_mm']].to_numpy()
 
 
 class ConvergencePlot(livePlot.LivePlot):
@@ -47,6 +46,14 @@ class ConvergencePlot(livePlot.LivePlot):
     calibModel = butler.get('moduleXml', moduleName='ALL', version='')
 
     goodIdx, badIdx = getCobraStatusIndex(calibModel)
+    cobraPosition = cobraPositionToFiber(db)
+
+    @staticmethod
+    def cobraIdFiberIdFormatter(x, y):
+        """"""
+        dx, dy = ConvergencePlot.cobraPosition[:, 2] - x, ConvergencePlot.cobraPosition[:, 3] - y
+        [cobraId, fiberId, cx, cy] = ConvergencePlot.cobraPosition[np.argmin(np.hypot(dx, dy))]
+        return f'x=%d. y=%d. cobraId=%d fiberId=%d' % (x, y, cobraId, fiberId)
 
     @staticmethod
     def loadConvergence(visitId):
