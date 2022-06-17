@@ -41,7 +41,7 @@ class ConvergenceBool(pfiUtils.ConvergencePlot):
         ax.set_ylabel("Y (mm)")
 
         # label with the pfsvisit Id
-        tString = f'pfsVisitId = {visitId:d}, iteration = {nIter:d}'
+        tString = f'Convergence Success: pfsVisitId = {visitId:d}, iteration = {nIter:d}'
         ax.set_title(tString)
 
         ax.set_aspect('equal')

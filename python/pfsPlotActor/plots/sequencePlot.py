@@ -41,7 +41,7 @@ class SequencePlot(pfiUtils.ConvergencePlot):
         ax.set_xlabel("X (mm)")
         ax.set_ylabel("Y (mm)")
 
-        tString = f'pfsVisitId = {visitId:d}'
+        tString = f'Cobra Motion: pfsVisitId = {visitId:d}'
         ax.set_title(tString)
         ax.format_coord = self.cobraIdFiberIdFormatter
 
