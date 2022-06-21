@@ -16,12 +16,15 @@ class ConvergenceMap(pfiUtils.ConvergencePlot):
         [visitId] = convergeData.pfs_visit_id.unique()
         nIter = convergeData.iteration.max() if nIter == -1 else nIter
 
-        # filter the dataframe for the iteration value
-        iterData = convergeData.query(f'iteration=={nIter}')
+        # filter the dataframe for the iteration value.
+        iterData = convergeData.query(f'iteration=={nIter}').reset_index()
         if iterData.empty:
             return
 
-        # calculate distance from targets at this iteration
+        # show moving cobras only.
+        iterData = iterData.loc[self.goodIdx]
+
+        # calculate distance from targets at this iteration.
         dx = iterData.pfi_center_x_mm - iterData.pfi_target_x_mm
         dy = iterData.pfi_center_y_mm - iterData.pfi_target_y_mm
         dist = np.hypot(dx, dy)
