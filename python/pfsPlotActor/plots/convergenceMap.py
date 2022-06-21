@@ -21,7 +21,12 @@ class ConvergenceMap(pfiUtils.ConvergencePlot):
         if iterData.empty:
             return
 
-        # show moving cobras only.
+        # show broken cobras.
+        bad = iterData.loc[self.badIdx]
+        ax.scatter(self.calibModel.centers.real[bad['cobra_id'].values - 1],
+                   self.calibModel.centers.imag[bad['cobra_id'].values - 1], marker='x', color='k', s=20, alpha=0.5)
+
+        # show moving cobras.
         iterData = iterData.loc[self.goodIdx]
 
         # calculate distance from targets at this iteration.
