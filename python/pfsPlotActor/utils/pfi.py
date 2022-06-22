@@ -3,6 +3,7 @@ import pandas as pd
 import pfsPlotActor.livePlot as livePlot
 from ics.cobraCharmer import func
 from opdb import opdb
+from pfs.datamodel import PfsDesign
 from pfs.utils.butler import Butler
 from pfs.utils.fiberids import FiberIds
 
@@ -47,6 +48,7 @@ class ConvergencePlot(livePlot.LivePlot):
 
     goodIdx, badIdx = getCobraStatusIndex(calibModel)
     cobraPosition = cobraPositionToFiber(db)
+    pfsDesign = None
 
     @staticmethod
     def cobraIdFiberIdFormatter(x, y):
@@ -75,6 +77,17 @@ class ConvergencePlot(livePlot.LivePlot):
         convergeData = ConvergencePlot.db.fetch_query(sql)
         return dict(convergeData=convergeData)
 
+    @staticmethod
+    def getPfsDesignId(visitId):
+        visitId = int(visitId)
+        sql = f'select pfs_design_id from pfs_visit where pfs_visit_id={visitId}'
+        [[pfsDesignId]] = ConvergencePlot.db.fetch_query(sql).to_numpy()
+        return pfsDesignId
+
+    @staticmethod
+    def getPfsDesign(designId):
+        return PfsDesign.read(designId, dirName='/data/pfsDesign')
+
     def initialize(self):
         """Initialize your axes and colorbar"""
         self.colorbar = None
@@ -89,3 +102,12 @@ class ConvergencePlot(livePlot.LivePlot):
     def plot(self, convergeData, *args, **kwargs):
         """Plot the latest dataset."""
         pass
+
+    def reloadDesign(self, visitId):
+        """Reload PfsDesign"""
+        pfsDesignId = ConvergencePlot.getPfsDesignId(visitId)
+
+        if not self.pfsDesign or self.pfsDesign.pfsDesignId != pfsDesignId:
+            self.pfsDesign = ConvergencePlot.getPfsDesign(pfsDesignId)
+
+        return self.pfsDesign
