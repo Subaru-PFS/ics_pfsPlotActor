@@ -34,6 +34,9 @@ class ConvergenceMap(pfiUtils.ConvergencePlot):
         dy = iterData.pfi_center_y_mm - iterData.pfi_target_y_mm
         dist = np.hypot(dx, dy)
 
+        # converting to microns
+        dist *= 1000
+
         vmin = min(dist) if vmin == 'auto' else float(vmin)
         vmax = max(dist) if vmax == 'auto' else float(vmax)
 
