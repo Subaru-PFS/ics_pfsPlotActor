@@ -6,9 +6,6 @@ reload(pfiUtils)
 
 
 class SpotBrightness(pfiUtils.ConvergencePlot):
-    key = 'convergenceId'
-    # needs to be overridden by the user.
-    actor = 'tests'
 
     def plot(self, convergeData, vmin='auto', vmax='auto'):
         """Plot the latest dataset."""

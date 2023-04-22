@@ -35,9 +35,9 @@ def cobraPositionToFiber(db):
 
 
 class ConvergencePlot(livePlot.LivePlot):
-    key = 'convergenceId'
+    key = 'pfsConfig'
     # needs to be overridden by the user.
-    actor = 'tests'
+    actor = 'fps'
 
     db = opdb.OpDB(hostname="db-ics", username="pfs", dbname="opdb")
     butler = Butler()
@@ -96,7 +96,7 @@ class ConvergencePlot(livePlot.LivePlot):
 
     def identify(self, keyvar):
         """load the convergence data"""
-        visit = keyvar.getValue()
+        designId, visit, status = keyvar.getValue()
         return self.loadConvergence(visit)
 
     def plot(self, convergeData, *args, **kwargs):

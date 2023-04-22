@@ -7,9 +7,6 @@ reload(pfiUtils)
 
 
 class SpotSize(pfiUtils.ConvergencePlot):
-    key = 'convergenceId'
-    # needs to be overridden by the user.
-    actor = 'tests'
 
     def initialize(self):
         """Initialize your axes and colorbar"""
