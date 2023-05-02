@@ -8,10 +8,15 @@ reload(pfiUtils)
 
 class ConvergenceBool(pfiUtils.ConvergencePlot):
 
-    def plot(self, convergeData, nIter=-1, tolerance=0.01):
+    def plot(self, convergeData, visitId=-1, nIter=-1, tolerance=0.01):
         """Plot the latest dataset."""
         fig = self.fig
         ax = self.axes[0]
+
+        # Get chosen convergence default is current.
+        convergeData = self.chosenConvergence(convergeData, visitId=visitId)
+        if not len(convergeData):
+            return
 
         [visitId] = convergeData.pfs_visit_id.unique()
         nIter = convergeData.iteration.max() if nIter == -1 else nIter
@@ -30,10 +35,12 @@ class ConvergenceBool(pfiUtils.ConvergencePlot):
 
         # scatter plots, one colour for converged, one for non converged
         sc = ax.scatter(self.calibModel.centers.real[iterData.cobra_id.values - 1][cobraConverged],
-                        self.calibModel.centers.imag[iterData.cobra_id.values - 1][cobraConverged], c='purple',
+                        self.calibModel.centers.imag[iterData.cobra_id.values - 1][cobraConverged],
+                        c='purple',
                         marker='o', s=20)
         sc = ax.scatter(self.calibModel.centers.real[iterData.cobra_id.values - 1][~cobraConverged],
-                        self.calibModel.centers.imag[iterData.cobra_id.values - 1][~cobraConverged], c='green',
+                        self.calibModel.centers.imag[iterData.cobra_id.values - 1][~cobraConverged],
+                        c='green',
                         marker='o', s=20)
 
         # some labels

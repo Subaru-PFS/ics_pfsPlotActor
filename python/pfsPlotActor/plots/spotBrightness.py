@@ -7,10 +7,15 @@ reload(pfiUtils)
 
 class SpotBrightness(pfiUtils.ConvergencePlot):
 
-    def plot(self, convergeData, vmin='auto', vmax='auto'):
+    def plot(self, convergeData, visitId=-1, vmin='auto', vmax='auto'):
         """Plot the latest dataset."""
         fig = self.fig
         ax = self.axes[0]
+
+        # Get chosen convergence default is current.
+        convergeData = self.chosenConvergence(convergeData, visitId=visitId)
+        if not len(convergeData):
+            return
 
         [visitId] = convergeData.pfs_visit_id.unique()
 

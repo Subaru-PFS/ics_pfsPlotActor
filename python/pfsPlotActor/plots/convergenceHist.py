@@ -9,11 +9,16 @@ reload(pfiUtils)
 
 class ConvergenceHist(pfiUtils.ConvergencePlot):
 
-    def plot(self, convergeData, vmin=0, vmax=30, bins=30, minIter=3):
+    def plot(self, convergeData, visitId=-1, vmin=0, vmax=30, bins=30, minIter=3):
         """Plot the latest dataset."""
         fig = self.fig
         ax = self.axes[0]
         cmap = plt.get_cmap('viridis')
+
+        # Get chosen convergence default is current.
+        convergeData = self.chosenConvergence(convergeData, visitId=visitId)
+        if not len(convergeData):
+            return
 
         [visitId] = convergeData.pfs_visit_id.unique()
         convergeData = convergeData.query(f'iteration>={minIter}')
