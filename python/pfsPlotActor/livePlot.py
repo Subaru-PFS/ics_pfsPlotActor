@@ -40,12 +40,11 @@ class LivePlot(object):
     def update(self, keyvar=None):
         """Callback called each time a new key is generated, basically clear previous axes and plot latest dataset."""
         keyvar = self.keyvar if keyvar is None else keyvar
-        if keyvar is None:
-            return
+
         try:
             dataId = self.identify(keyvar)
         except ValueError:
-            return
+            dataId = dict()
 
         self.keyvar = keyvar
 

@@ -88,6 +88,13 @@ class ConvergencePlot(livePlot.LivePlot):
     def getPfsDesign(designId):
         return PfsDesign.read(designId, dirName='/data/pfsDesign')
 
+    def chosenConvergence(self, convergenceData, visitId):
+        """The user might choose another visitId."""
+        if visitId == -1:
+            return convergenceData
+
+        return self.loadConvergence(visitId)['convergeData']
+
     def initialize(self):
         """Initialize your axes and colorbar"""
         self.colorbar = None
@@ -96,7 +103,11 @@ class ConvergencePlot(livePlot.LivePlot):
 
     def identify(self, keyvar):
         """load the convergence data"""
-        designId, visit, status = keyvar.getValue()
+        try:
+            designId, visit, status = keyvar.getValue()
+        except ValueError:
+            visit = 0
+
         return self.loadConvergence(visit)
 
     def plot(self, convergeData, *args, **kwargs):

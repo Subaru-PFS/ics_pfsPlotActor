@@ -8,10 +8,15 @@ reload(pfiUtils)
 
 class ConvergenceMap(pfiUtils.ConvergencePlot):
 
-    def plot(self, convergeData, nIter=-1, vmin='auto', vmax='auto'):
+    def plot(self, convergeData, visitId=-1, nIter=-1, vmin='auto', vmax='auto'):
         """Plot the latest dataset."""
         fig = self.fig
         ax = self.axes[0]
+
+        # Get chosen convergence default is current.
+        convergeData = self.chosenConvergence(convergeData, visitId=visitId)
+        if not len(convergeData):
+            return
 
         [visitId] = convergeData.pfs_visit_id.unique()
         nIter = convergeData.iteration.max() if nIter == -1 else nIter
