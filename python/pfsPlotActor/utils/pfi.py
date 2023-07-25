@@ -31,7 +31,7 @@ def cobraPositionToFiber(db):
     df = db.fetch_query(sql)
     gfmDf = pd.DataFrame(FiberIds().data)
     df['fiberId'] = gfmDf.set_index('cobraId').loc[df.cobra_id].fiberId.to_numpy()
-    return df[['cobra_id', 'fiberId', 'center_x_mm', 'center_y_mm']].to_numpy()
+    return df[['cobra_id', 'fiberId', 'center_x_mm', 'center_y_mm']]
 
 
 class ConvergencePlot(livePlot.LivePlot):
@@ -53,8 +53,9 @@ class ConvergencePlot(livePlot.LivePlot):
     @staticmethod
     def cobraIdFiberIdFormatter(x, y):
         """"""
-        dx, dy = ConvergencePlot.cobraPosition[:, 2] - x, ConvergencePlot.cobraPosition[:, 3] - y
-        [cobraId, fiberId, cx, cy] = ConvergencePlot.cobraPosition[np.argmin(np.hypot(dx, dy))]
+        dx = ConvergencePlot.cobraPosition.center_x_mm.to_numpy() - x
+        dy = ConvergencePlot.cobraPosition.center_y_mm.to_numpy() - y
+        [cobraId, fiberId, cx, cy] = ConvergencePlot.cobraPosition.to_numpy()[np.argmin(np.hypot(dx, dy))]
         return f'x=%d. y=%d. cobraId=%d fiberId=%d' % (x, y, cobraId, fiberId)
 
     @staticmethod
@@ -78,6 +79,12 @@ class ConvergencePlot(livePlot.LivePlot):
         return dict(convergeData=convergeData)
 
     @staticmethod
+    def loadTargetType(visitId):
+        sql = f'select fiber_id,target_type from pfs_design_fiber ' \
+              f'inner join pfs_config on pfs_config.pfs_design_id=pfs_design_fiber.pfs_design_id where visit0={visitId}'
+        return ConvergencePlot.db.fetch_query(sql)
+
+    @staticmethod
     def getPfsDesignId(visitId):
         visitId = int(visitId)
         sql = f'select pfs_design_id from pfs_visit where pfs_visit_id={visitId}'
@@ -87,6 +94,13 @@ class ConvergencePlot(livePlot.LivePlot):
     @staticmethod
     def getPfsDesign(designId):
         return PfsDesign.read(designId, dirName='/data/pfsDesign')
+
+    def addTargetInfo(self, iterData, targetType):
+        """add target information."""
+        iterData = iterData.copy()
+        iterData['fiberId'] = self.cobraPosition.fiberId.to_numpy()
+        iterData['targetType'] = targetType.set_index('fiber_id').loc[self.cobraPosition.fiberId.to_numpy()].to_numpy()
+        return iterData
 
     def chosenConvergence(self, convergenceData, visitId):
         """The user might choose another visitId."""
