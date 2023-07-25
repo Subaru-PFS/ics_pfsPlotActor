@@ -110,23 +110,26 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
                                         label=f'{iterVal}-th Iteration', bins=bins, range=(vmin, vmax),
                                         color=cmap[i])
 
-        try:
-            showPercentiles = list(map(int, showPercentiles.split(',')))
-        except:
-            showPercentiles = [75, 95]
-
-        percentiles = np.percentile(dist, showPercentiles)
-
-        ymin, ymax = ax2.get_ylim()
-
-        for value, perc in zip(percentiles, showPercentiles):
-            ax2.vlines(percentiles, ymin, ymax, label=f'{perc}th : {value:.1f} microns', color='k', alpha=0.3)
-
         ax2.legend(loc='upper right')
         ax2.set_title(f"Distance to Target: pfsVisitId = {visitId:d}")
         ax2.set_xlabel("Distance (microns)")
         ax2.set_ylabel("N")
         ax2.set_aspect('auto')
         ax2.grid()
+
+        # adding percentiles
+        try:
+            showPercentiles = list(map(int, showPercentiles.split(',')))
+        except:
+            showPercentiles = [75, 95]
+
+        percentiles = np.percentile(dist, showPercentiles)
+        ymin, ymax = ax2.get_ylim()
+
+        for value, perc in zip(percentiles, showPercentiles):
+            color = 'r' if perc == 95 and value > 10 else 'k'
+            ax2.vlines(value, ymin, ymax, label=f'{perc}th : {value:.1f} microns', color=color, alpha=0.5)
+            label = ax2.legend().get_texts()[-1]
+            label.set_color(color)
 
         fig.tight_layout()
