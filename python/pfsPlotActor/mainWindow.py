@@ -20,8 +20,8 @@ class PfsPlot(QMainWindow):
         self.constructMainCanvas()
         # show, move and resize.
         self.show()
-        self.move(self.screenWidth * 0.5, self.screenHeight * 0.5)
-        self.resize(self.screenWidth * 0.2, self.screenHeight * 0.2)
+        self.move(int(round(self.screenWidth * 0.5)), int(round(self.screenHeight * 0.5)))
+        self.resize(int(round(self.screenWidth * 0.2)), int(round(self.screenHeight * 0.2)))
         self.setConnected(False)
 
     def constructMainCanvas(self):
