@@ -34,13 +34,13 @@ class ShowGuiderErrors(agUtils.AgPlot):
              modelCCDOffset=False,
              solveForAGTransforms=False,
              onlyShutterOpen=True,
-             maxGuideError=25,
+             maxGuideError=100,
              maxPosError=40,
              guideErrorEstimate=50,
              pfiScaleReduction=1,
              gstarExpansion=10,
              agc_exposure_idsStride=1,
-             guide_star_frac=0.1):
+             guide_star_frac=0.3):
         """
         Configure the GuiderConfig object and call the plotting routine.
 
