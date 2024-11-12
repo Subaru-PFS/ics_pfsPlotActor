@@ -5,6 +5,7 @@ setupRequired(ics_actorkeys)
 setupRequired(ics_xcu_fpga)
 setupRequired(spt_operational_database)
 setupRequired(datamodel)
+setupRequired(drp_stella INSTRM-2371)
 
 pathPrepend(PATH, ${PRODUCT_DIR}/bin)
 pathPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)

@@ -11,8 +11,12 @@ import inspect
 import pfsPlotActor.layout as layout
 import pfsPlotActor.tweaks as tweaks
 
+from PyQt5.QtWidgets import QGridLayout
+
 
 class MplWidget(QWidget):
+    maxNumCols = 8  # Number of columns (you can adjust this if needed)
+
     def __init__(self, *args, **kwargs):
         QWidget.__init__(self, *args, **kwargs)
 
@@ -26,15 +30,21 @@ class MplWidget(QWidget):
         self.setLayout(vbox)
 
     def addTweakingWidgets(self, livePlot):
-        """Inspect livePlot.plot function argument and dynamically add editable fields."""
-        hbox = layout.HBoxLayout()
+        """
+        Inspect livePlot.plot function arguments and dynamically add editable fields.
+
+        If the number of widgets exceeds 6, they are arranged in two rows.
+        """
         tweakDict = dict()
         signature = inspect.signature(livePlot.plot)
 
+        widgets = []
+        # Generate all the widgets based on function signature.
         for paramName, paramValue in signature.parameters.items():
             if paramValue.default is inspect._empty:
                 continue
 
+            # Determine the widget class based on the parameter type.
             if isinstance(paramValue.default, bool):
                 widgetClass = tweaks.CheckBox
             elif isinstance(paramValue.default, int):
@@ -50,14 +60,26 @@ class MplWidget(QWidget):
             widget.setValue(paramValue.default)
             widget.attachCallback(livePlot.update)
             tweakDict[paramName] = widget
-            hbox.addWidget(widget)
+            widgets.append(widget)  # Collect all widgets
 
+        # Attach the tweak dictionary to the live plot.
         livePlot.attachTweaks(tweakDict)
-        self.layout().insertLayout(0, hbox)
+
+        # Create a grid layout to arrange widgets.
+        gridLayout = QGridLayout()
+
+        # Arrange widgets in the grid.
+
+        for i, widget in enumerate(widgets):
+            row = i // MplWidget.maxNumCols  # Calculate the row number
+            col = i % MplWidget.maxNumCols  # Calculate the column number
+            gridLayout.addWidget(widget, row, col)
+
+        # Insert the grid layout at the top of the main layout.
+        self.layout().insertLayout(0, gridLayout)
 
 
 class MplCanvas(FigureCanvasQTAgg):
-
     def __init__(self, *args, **kwargs):
         fig = Figure(*args, **kwargs)
         super(MplCanvas, self).__init__(fig)
