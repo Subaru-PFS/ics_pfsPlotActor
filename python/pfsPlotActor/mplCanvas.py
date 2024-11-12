@@ -8,10 +8,13 @@ matplotlib.use('Qt5Agg')
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from PyQt5.QtWidgets import QWidget, QSizePolicy, QGridLayout
+from PyQt5.QtCore import Qt
 from matplotlib.figure import Figure
 import inspect
 import pfsPlotActor.layout as layout
 import pfsPlotActor.tweaks as tweaks
+
+from PyQt5.QtWidgets import QMenu
 
 
 class MplWidget(QWidget):
@@ -40,6 +43,9 @@ class MplWidget(QWidget):
         self.canvas = MplCanvas()
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
+        # Initialize tweak widgets visibility state
+        self.tweakWidgetsVisible = False
+
         # Use a custom vertical box layout for the main widget structure
         vbox = layout.VBoxLayout()
         vbox.addWidget(self.canvas)
@@ -48,9 +54,18 @@ class MplWidget(QWidget):
         # Create and add tweaking widgets grid layout, set to visible by default
         self.tweakGridLayout = QGridLayout()
         self.tweakGridLayout.setContentsMargins(0, 0, 0, 0)
-        vbox.insertLayout(0, self.tweakGridLayout)
+
+        # Add tweak widgets grid layout in a separate widget (initially hidden)
+        self.tweakGridWidget = QWidget()
+        self.tweakGridWidget.setLayout(self.tweakGridLayout)
+        self.tweakGridWidget.setVisible(self.tweakWidgetsVisible)
+        vbox.insertWidget(0, self.tweakGridWidget)
 
         self.setLayout(vbox)
+
+        # Connect context menu event in MplCanvas
+        self.canvas.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.canvas.customContextMenuRequested.connect(self.showContextMenu)
 
     def addTweakingWidgets(self, livePlot):
         """
@@ -102,6 +117,23 @@ class MplWidget(QWidget):
         for i, widget in enumerate(widgets):
             row, col = divmod(i, MplWidget.maxNumCols)
             self.tweakGridLayout.addWidget(widget, row, col)
+
+        self.toggleTweakWidgets()
+
+    def showContextMenu(self, pos):
+        """Display the context menu to toggle tweak parameters."""
+        menu = QMenu(self)
+        toggleAction = menu.addAction(
+            "Show Tweak Parameters" if not self.tweakWidgetsVisible else "Hide Tweak Parameters")
+        action = menu.exec_(self.canvas.mapToGlobal(pos))
+
+        if action == toggleAction:
+            self.toggleTweakWidgets()
+
+    def toggleTweakWidgets(self):
+        """Toggle the visibility of tweak widgets."""
+        self.tweakWidgetsVisible = not self.tweakWidgetsVisible
+        self.tweakGridWidget.setVisible(self.tweakWidgetsVisible)
 
 
 class MplCanvas(FigureCanvasQTAgg):
