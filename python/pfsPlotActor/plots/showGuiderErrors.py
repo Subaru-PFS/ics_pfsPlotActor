@@ -6,7 +6,7 @@ import pfs.drp.stella.utils.guiders as guiders
 reload(agUtils)
 
 
-class ShowGuideErrors(agUtils.AgPlot):
+class ShowGuiderErrors(agUtils.AgPlot):
     """
     A class to visualize and plot guiding errors using AGC data.
 

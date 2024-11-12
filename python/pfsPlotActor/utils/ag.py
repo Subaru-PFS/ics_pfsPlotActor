@@ -1,5 +1,6 @@
 import pfsPlotActor.livePlot as livePlot
-import pfsPlotActor.utils.guiders as rhlGuiders
+import pfs.drp.stella.utils.guiders as guiders
+import pfs.drp.stella.utils.sysUtils as sysUtils
 import psycopg2
 
 
@@ -26,7 +27,7 @@ class AgPlot(livePlot.LivePlot):
         This loads the results at a given iteration
         """
         opdb = AgPlot.getConn()
-        agcData = rhlGuiders.readAgcDataFromOpdb(opdb, visits=[visitId])
+        agcData = guiders.readAgcDataFromOpdb(opdb, visits=[visitId])
         return dict(agcData=agcData)
 
     def selectData(self, dataset, visitId):
@@ -47,7 +48,7 @@ class AgPlot(livePlot.LivePlot):
         try:
             exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
             sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
-            [visitId, ] = rhlGuiders.pd_read_sql(sql, AgPlot.getConn()).pfs_visit_id.to_numpy()
+            [visitId, ] = sysUtils.pd_read_sql(sql, AgPlot.getConn()).pfs_visit_id.to_numpy()
         except ValueError:
             visitId = 1
 
