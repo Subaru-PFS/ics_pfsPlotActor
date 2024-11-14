@@ -1,7 +1,6 @@
-import pfsPlotActor.livePlot as livePlot
 import pfs.drp.stella.utils.guiders as guiders
+import pfsPlotActor.livePlot as livePlot
 import pfs.drp.stella.utils.sysUtils as sysUtils
-import psycopg2
 
 
 class AgPlot(livePlot.LivePlot):
@@ -9,15 +8,7 @@ class AgPlot(livePlot.LivePlot):
     # needs to be overridden by the user.
     actor = 'ag'
 
-    @staticmethod
-    def getConn():
-        """
-        Establishes a connection to the PostgreSQL database 'opdb' on host 'pfsa-db01' and port 5432 with user 'pfs'.
-
-        Returns:
-        conn: A PostgreSQL connection object.
-        """
-        return psycopg2.connect("dbname='opdb' host='db-ics' port=5432 user='pfs'")
+    opdb = livePlot.LivePlot.getConn()
 
     @staticmethod
     def readData(visitId):
@@ -26,8 +17,7 @@ class AgPlot(livePlot.LivePlot):
         This does a join on cobra_target and cobra_match to get both target and actual positions.
         This loads the results at a given iteration
         """
-        opdb = AgPlot.getConn()
-        agcData = guiders.readAgcDataFromOpdb(opdb, visits=[visitId])
+        agcData = guiders.readAgcDataFromOpdb(AgPlot.opdb, visits=[visitId])
         return dict(agcData=agcData)
 
     def selectData(self, dataset, visitId):
@@ -48,7 +38,7 @@ class AgPlot(livePlot.LivePlot):
         try:
             exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
             sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
-            [visitId, ] = sysUtils.pd_read_sql(sql, AgPlot.getConn()).pfs_visit_id.to_numpy()
+            [visitId, ] = sysUtils.pd_read_sql(sql, AgPlot.opdb).pfs_visit_id.to_numpy()
         except ValueError:
             visitId = 1
 

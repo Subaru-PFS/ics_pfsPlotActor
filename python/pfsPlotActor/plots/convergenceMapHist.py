@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pfsPlotActor.utils.pfi as pfiUtils
 from pfs.datamodel import TargetType
+from pfsPlotActor.utils.sgfm import calibModel
 
 reload(pfiUtils)
 
@@ -42,8 +43,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
 
         # show broken cobras.
         bad = iterData.loc[self.badIdx]
-        ax1.scatter(self.calibModel.centers.real[bad['cobra_id'].values - 1],
-                    self.calibModel.centers.imag[bad['cobra_id'].values - 1], marker='x', color='k', s=20,
+        ax1.scatter(calibModel.centers.real[bad['cobra_id'].values - 1],
+                    calibModel.centers.imag[bad['cobra_id'].values - 1], marker='x', color='k', s=20,
                     alpha=0.5)
 
         # show moving cobras.
@@ -63,8 +64,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         vmin = min(dist) if vmin == 'auto' else float(vmin)
         vmax = max(dist) if vmax == 'auto' else float(vmax)
 
-        sc = ax1.scatter(self.calibModel.centers.real[iterData['cobra_id'].values - 1],
-                         self.calibModel.centers.imag[iterData['cobra_id'].values - 1],
+        sc = ax1.scatter(calibModel.centers.real[iterData['cobra_id'].values - 1],
+                         calibModel.centers.imag[iterData['cobra_id'].values - 1],
                          c=dist, marker='o', s=20, vmin=vmin, vmax=vmax)
 
         if self.colorbar is None:

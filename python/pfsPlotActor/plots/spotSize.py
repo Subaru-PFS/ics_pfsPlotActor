@@ -2,6 +2,7 @@ from importlib import reload
 
 import numpy as np
 import pfsPlotActor.utils.pfi as pfiUtils
+from pfsPlotActor.utils.sgfm import calibModel
 
 reload(pfiUtils)
 
@@ -44,9 +45,9 @@ class SpotSize(pfiUtils.ConvergencePlot):
         vmax = avg + 3 * std if vmax == 'auto' else vmax
 
         # do the scatter plots
-        sc = ax1.scatter(self.calibModel.centers.real[cInd], self.calibModel.centers.imag[cInd], c=fx, s=20, vmin=vmin,
+        sc = ax1.scatter(calibModel.centers.real[cInd], calibModel.centers.imag[cInd], c=fx, s=20, vmin=vmin,
                          vmax=vmax)
-        sc = ax2.scatter(self.calibModel.centers.real[cInd], self.calibModel.centers.imag[cInd], c=fy, s=20, vmin=vmin,
+        sc = ax2.scatter(calibModel.centers.real[cInd], calibModel.centers.imag[cInd], c=fy, s=20, vmin=vmin,
                          vmax=vmax)
 
         # some labels

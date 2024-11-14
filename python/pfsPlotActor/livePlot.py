@@ -1,6 +1,8 @@
 import logging
 from collections.abc import Iterable
 
+import psycopg2
+
 
 class LivePlot(object):
     # actor and key that to attach the callback to.
@@ -23,6 +25,16 @@ class LivePlot(object):
     @property
     def tweakDict(self):
         return dict([(k, w.getValue()) for k, w in self.tweaks.items()])
+
+    @staticmethod
+    def getConn():
+        """
+        Establishes a connection to the PostgreSQL database 'opdb'.
+
+        Returns:
+        conn: A PostgreSQL connection object.
+        """
+        return psycopg2.connect("dbname='opdb' host='db-ics' port=5432 user='pfs'")
 
     def initialize(self):
         """Initialize your axes"""

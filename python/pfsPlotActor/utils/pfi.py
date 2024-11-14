@@ -1,37 +1,8 @@
 import numpy as np
-import pandas as pd
+import pfs.drp.stella.utils.sysUtils as sysUtils
 import pfsPlotActor.livePlot as livePlot
-from ics.cobraCharmer import func
-from opdb import opdb
 from pfs.datamodel import PfsDesign
-from pfs.utils.butler import Butler
-from pfs.utils.fiberids import FiberIds
-
-
-def getCobraStatusIndex(calibModel):
-    """Retrieve good/bad cobra index."""
-    # get goodIdx
-    allCobras = [func.Cobra(calibModel.moduleIds[i], calibModel.positionerIds[i]) for i in
-                 calibModel.findAllCobras()]
-    nCobras = len(allCobras)
-
-    goodNums = [i + 1 for i, c in enumerate(allCobras) if calibModel.cobraIsGood(c.cobraNum, c.module)]
-    badNums = [e for e in range(1, nCobras + 1) if e not in goodNums]
-
-    goodIdx = np.array(goodNums, dtype='i4') - 1
-    badIdx = np.array(badNums, dtype='i4') - 1
-
-    return goodIdx, badIdx
-
-
-def cobraPositionToFiber(db):
-    """Return cobraId,fiberId,x,y from opdb/grandfibermap."""
-    sql = 'SELECT cobra_id,cobra_geometry_calib_id,center_x_mm,center_y_mm FROM cobra_geometry ' \
-          'WHERE cobra_geometry_calib_id=(SELECT MAX(cobra_geometry_calib_id) from cobra_geometry)'
-    df = db.fetch_query(sql)
-    gfmDf = pd.DataFrame(FiberIds().data)
-    df['fiberId'] = gfmDf.set_index('cobraId').loc[df.cobra_id].fiberId.to_numpy()
-    return df[['cobra_id', 'fiberId', 'center_x_mm', 'center_y_mm']]
+from pfsPlotActor.utils.sgfm import sgfm
 
 
 class ConvergencePlot(livePlot.LivePlot):
@@ -39,24 +10,20 @@ class ConvergencePlot(livePlot.LivePlot):
     # needs to be overridden by the user.
     actor = 'fps'
 
-    db = opdb.OpDB(hostname="db-ics", username="pfs", dbname="opdb")
-    butler = Butler()
+    opdb = livePlot.LivePlot.getConn()
 
-    dots = butler.get('black_dots')
-    fids = butler.get('fiducials')
-    calibModel = butler.get('moduleXml', moduleName='ALL', version='')
+    badIdx = sgfm[~sgfm.COBRA_OK_MASK].index.to_numpy()
+    goodIdx = sgfm[sgfm.COBRA_OK_MASK].index.to_numpy()
 
-    goodIdx, badIdx = getCobraStatusIndex(calibModel)
-    cobraPosition = cobraPositionToFiber(db)
     pfsDesign = None
 
     @staticmethod
     def cobraIdFiberIdFormatter(x, y):
         """"""
-        dx = ConvergencePlot.cobraPosition.center_x_mm.to_numpy() - x
-        dy = ConvergencePlot.cobraPosition.center_y_mm.to_numpy() - y
-        [cobraId, fiberId, cx, cy] = ConvergencePlot.cobraPosition.to_numpy()[np.argmin(np.hypot(dx, dy))]
-        return f'x=%d. y=%d. cobraId=%d fiberId=%d' % (x, y, cobraId, fiberId)
+        dx = sgfm.x.to_numpy() - x
+        dy = sgfm.y.to_numpy() - y
+        row = sgfm.loc[np.argmin(np.hypot(dx, dy))]
+        return f'x=%d. y=%d. cobraId=%d fiberId=%d' % (x, y, row.cobraId, row.fiberId)
 
     @staticmethod
     def loadConvergence(visitId):
@@ -75,20 +42,20 @@ class ConvergencePlot(livePlot.LivePlot):
               f'on md.mcs_frame_id = cm.pfs_visit_id * 100 + cm.iteration and md.spot_id = cm.spot_id where cm.pfs_visit_id = {visitId} order by ct.cobra_id, ct.iteration'
 
         # get data
-        convergeData = ConvergencePlot.db.fetch_query(sql)
+        convergeData = sysUtils.pd_read_sql(sql, ConvergencePlot.opdb)
         return dict(convergeData=convergeData)
 
     @staticmethod
     def loadTargetType(visitId):
         sql = f'select fiber_id,target_type from pfs_design_fiber ' \
               f'inner join pfs_config on pfs_config.pfs_design_id=pfs_design_fiber.pfs_design_id where visit0={visitId}'
-        return ConvergencePlot.db.fetch_query(sql)
+        return sysUtils.pd_read_sql(sql, ConvergencePlot.opdb)
 
     @staticmethod
     def getPfsDesignId(visitId):
         visitId = int(visitId)
         sql = f'select pfs_design_id from pfs_visit where pfs_visit_id={visitId}'
-        [[pfsDesignId]] = ConvergencePlot.db.fetch_query(sql).to_numpy()
+        [[pfsDesignId]] = sysUtils.pd_read_sql(sql, ConvergencePlot.opdb).to_numpy()
         return pfsDesignId
 
     @staticmethod
@@ -98,8 +65,8 @@ class ConvergencePlot(livePlot.LivePlot):
     def addTargetInfo(self, iterData, targetType):
         """add target information."""
         iterData = iterData.copy()
-        iterData['fiberId'] = self.cobraPosition.fiberId.to_numpy()
-        iterData['targetType'] = targetType.set_index('fiber_id').loc[self.cobraPosition.fiberId.to_numpy()].to_numpy()
+        iterData['fiberId'] = sgfm.loc[iterData.cobra_id.to_numpy() - 1].fiberId.to_numpy()
+        iterData['targetType'] = targetType.set_index('fiber_id').loc[iterData.fiberId.to_numpy()].to_numpy()
         return iterData
 
     def chosenConvergence(self, convergenceData, visitId):

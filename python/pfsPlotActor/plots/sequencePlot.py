@@ -1,8 +1,9 @@
 from importlib import reload
 
-import matplotlib.pylab as plt
+import matplotlib.pyplot as plt
 import numpy as np
 import pfsPlotActor.utils.pfi as pfiUtils
+from pfsPlotActor.utils.sgfm import calibModel, dots, fiducials
 from matplotlib.colors import to_hex
 
 reload(pfiUtils)
@@ -69,17 +70,17 @@ class SequencePlot(pfiUtils.ConvergencePlot):
 
     def overlayFF(self, ax):
         """Overlay positions of fiducial fibres."""
-        ax.scatter(self.fids['x_mm'], self.fids['y_mm'], marker="d")
+        ax.scatter(fiducials['x_mm'], fiducials['y_mm'], marker="d")
 
     def overlayPatrolRegion(self, ax, cobraNum=None):
         """Overlay cobra patrol regions on given axis.
         if cobraNum == None do for all good cobras, else for cobraNum
         """
         ind = self.cobraIndices(cobraNum)
-        armLength = self.calibModel.L1 + self.calibModel.L2
+        armLength = calibModel.L1 + calibModel.L2
 
         for i in ind:
-            circle = plt.Circle((self.calibModel.centers[i].real, self.calibModel.centers[i].imag), armLength[i],
+            circle = plt.Circle((calibModel.centers[i].real, calibModel.centers[i].imag), armLength[i],
                                 fill=False, color='black')
             a = ax.add_artist(circle)
 
@@ -88,19 +89,19 @@ class SequencePlot(pfiUtils.ConvergencePlot):
         if cobraNum == None do for all good cobras, else for cobraNum.
         """
         ind = self.cobraIndices(cobraNum)
-        ax.scatter(self.calibModel.centers[ind].real, self.calibModel.centers[ind].imag, c='black', marker='o', s=25)
+        ax.scatter(calibModel.centers[ind].real, calibModel.centers[ind].imag, c='black', marker='o', s=25)
 
     def overlayHardStop(self, ax, cobraNum=None):
         """Overlay theta hard stops
         if cobraNum == None do for all good cobras, else for cobraNum
         """
         ind = self.cobraIndices(cobraNum)
-        length = self.calibModel.L1 + self.calibModel.L1
+        length = calibModel.L1 + calibModel.L1
 
-        self._addLine(ax, self.calibModel.centers[ind], length[ind], self.calibModel.tht0[ind], color='orange',
+        self._addLine(ax, calibModel.centers[ind], length[ind], calibModel.tht0[ind], color='orange',
                       linewidth=0.5, linestyle='--')
 
-        self._addLine(ax, self.calibModel.centers[ind], length[ind], self.calibModel.tht1[ind], color='black',
+        self._addLine(ax, calibModel.centers[ind], length[ind], calibModel.tht1[ind], color='black',
                       linewidth=0.5, linestyle='-.')
 
     def overlayBlackDots(self, ax, cobraNum=None):
@@ -110,7 +111,7 @@ class SequencePlot(pfiUtils.ConvergencePlot):
         ind = self.cobraIndices(cobraNum)
 
         for i in ind:
-            e = plt.Circle((self.dots['x'].values[i], self.dots['y'].values[i]), self.dots['r'].values[i],
+            e = plt.Circle((dots['x'].values[i], dots['y'].values[i]), dots['r'].values[i],
                            color='grey', fill=True, alpha=0.5)
             ax.add_artist(e)
 
@@ -129,7 +130,7 @@ class SequencePlot(pfiUtils.ConvergencePlot):
         """Overlay centre positions of cobra patrol regions on given axis.
         if cobraNum == None do for all good cobras, else for cobraNum
         """
-        ax.scatter(self.calibModel.centers[self.badIdx].real, self.calibModel.centers[self.badIdx].imag, c='black',
+        ax.scatter(calibModel.centers[self.badIdx].real, calibModel.centers[self.badIdx].imag, c='black',
                    marker='*', s=25)
 
     def _addLine(self, ax, centers, length, angle, **kwargs):

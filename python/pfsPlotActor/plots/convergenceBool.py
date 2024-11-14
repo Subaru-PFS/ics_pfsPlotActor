@@ -2,7 +2,7 @@ from importlib import reload
 
 import numpy as np
 import pfsPlotActor.utils.pfi as pfiUtils
-
+from pfsPlotActor.utils.sgfm import calibModel
 reload(pfiUtils)
 
 
@@ -35,12 +35,12 @@ class ConvergenceBool(pfiUtils.ConvergencePlot):
         cobraConverged = dist <= tolerance
 
         # scatter plots, one colour for converged, one for non converged
-        sc = ax.scatter(self.calibModel.centers.real[iterData.cobra_id.values - 1][cobraConverged],
-                        self.calibModel.centers.imag[iterData.cobra_id.values - 1][cobraConverged],
+        sc = ax.scatter(calibModel.centers.real[iterData.cobra_id.values - 1][cobraConverged],
+                        calibModel.centers.imag[iterData.cobra_id.values - 1][cobraConverged],
                         c='purple',
                         marker='o', s=20)
-        sc = ax.scatter(self.calibModel.centers.real[iterData.cobra_id.values - 1][~cobraConverged],
-                        self.calibModel.centers.imag[iterData.cobra_id.values - 1][~cobraConverged],
+        sc = ax.scatter(calibModel.centers.real[iterData.cobra_id.values - 1][~cobraConverged],
+                        calibModel.centers.imag[iterData.cobra_id.values - 1][~cobraConverged],
                         c='green',
                         marker='o', s=20)
 

@@ -1,7 +1,7 @@
 from importlib import reload
 
 import pfsPlotActor.utils.pfi as pfiUtils
-
+from pfsPlotActor.utils.sgfm import calibModel
 reload(pfiUtils)
 
 
@@ -28,7 +28,7 @@ class SpotBrightness(pfiUtils.ConvergencePlot):
         vmax = max(peak) if vmax == 'auto' else vmax
 
         # do a scatter plot
-        sc = ax.scatter(self.calibModel.centers.real[cInd], self.calibModel.centers.imag[cInd], c=peak, s=20, vmin=vmin,
+        sc = ax.scatter(calibModel.centers.real[cInd], calibModel.centers.imag[cInd], c=peak, s=20, vmin=vmin,
                         vmax=vmax)
 
         if self.colorbar is None:
