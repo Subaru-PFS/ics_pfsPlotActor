@@ -9,6 +9,7 @@ reload(pfiUtils)
 
 
 class ConvergenceMapHist(pfiUtils.ConvergencePlot):
+    units = dict(vmin='microns', vmax='microns')
 
     def initialize(self):
         """Initialize your axes and colorbar"""

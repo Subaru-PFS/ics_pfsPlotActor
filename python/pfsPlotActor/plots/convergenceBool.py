@@ -7,6 +7,7 @@ reload(pfiUtils)
 
 
 class ConvergenceBool(pfiUtils.ConvergencePlot):
+    units = dict(tolerance='mm')
 
     def plot(self, convergeData, visitId=-1, nIter=-1, tolerance=0.01):
         """Plot the latest dataset."""

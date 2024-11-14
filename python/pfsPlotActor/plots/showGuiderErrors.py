@@ -1,7 +1,7 @@
 from importlib import reload
 
-import pfsPlotActor.utils.ag as agUtils
 import pfs.drp.stella.utils.guiders as guiders
+import pfsPlotActor.utils.ag as agUtils
 
 reload(agUtils)
 
@@ -21,6 +21,7 @@ class ShowGuiderErrors(agUtils.AgPlot):
     axes : list of matplotlib.axes.Axes
         List of axes used for plotting.
     """
+    units = dict(maxGuideError='microns', maxPosError='microns', guideErrorEstimate='microns')
 
     def plot(self, agcData, visitId=-1,
              showAverageGuideStarPos=False,

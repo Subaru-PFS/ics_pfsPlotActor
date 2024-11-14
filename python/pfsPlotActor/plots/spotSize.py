@@ -7,6 +7,7 @@ reload(pfiUtils)
 
 
 class SpotSize(pfiUtils.ConvergencePlot):
+    units = dict(vmin='pixels', vmax='pixels')
 
     def initialize(self):
         """Initialize your axes and colorbar"""
