@@ -6,8 +6,9 @@ class Tweak(QGroupBox):
     """Editable field to be parsed to updatePlot function."""
     valueType = QLineEdit
 
-    def __init__(self, title):
+    def __init__(self, title, unit=None):
         QGroupBox.__init__(self)
+        title = f'{title} ({unit})' if unit else title
         self.setTitle('%s' % title)
 
         grid = layout.GBoxValue()

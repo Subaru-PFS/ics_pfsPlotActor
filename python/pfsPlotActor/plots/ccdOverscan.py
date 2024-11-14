@@ -10,6 +10,7 @@ class CcdOverscan(livePlot.LivePlot):
     key = 'filepath'
     # needs to be overridden by the user.
     actor = 'ccd_{cam}'
+    units = dict(nSigma='ADUs')
 
     def initialize(self):
         """Initialize my axes, ax1 to plot the bias level wrt row, ax2 for the residual histograms."""

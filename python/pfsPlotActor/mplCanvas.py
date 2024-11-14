@@ -103,8 +103,10 @@ class MplWidget(QWidget):
             if widgetClass is None:
                 continue
 
+            unit = livePlot.units.get(paramName, None)
+
             # Initialize and configure the widget
-            widget = widgetClass(paramName)
+            widget = widgetClass(paramName, unit=unit)
             widget.setValue(paramValue.default)
             widget.attachCallback(livePlot.update)
             tweakDict[paramName] = widget

@@ -6,6 +6,7 @@ class LivePlot(object):
     # actor and key that to attach the callback to.
     actor = None
     key = None
+    units = dict()
 
     def __init__(self, canvas):
         self.canvas = canvas

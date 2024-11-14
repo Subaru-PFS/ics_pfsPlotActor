@@ -6,6 +6,7 @@ reload(pfiUtils)
 
 
 class SpotBrightness(pfiUtils.ConvergencePlot):
+    units = dict(vmin='ADUs', vmax='ADUs')
 
     def plot(self, convergeData, visitId=-1, vmin='auto', vmax='auto'):
         """Plot the latest dataset."""

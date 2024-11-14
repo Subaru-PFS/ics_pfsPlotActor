@@ -8,6 +8,7 @@ reload(pfiUtils)
 
 
 class ConvergenceHist(pfiUtils.ConvergencePlot):
+    units = dict(vmin='microns', vmax='microns')
 
     def plot(self, convergeData, visitId=-1, vmin=0, vmax=30, bins=30, minIter=3):
         """Plot the latest dataset."""
