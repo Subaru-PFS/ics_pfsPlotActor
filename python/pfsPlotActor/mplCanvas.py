@@ -34,7 +34,7 @@ class MplWidget(QWidget):
         Layout to hold dynamically generated tweaking widgets.
     """
 
-    maxNumCols = 8  # Maximum number of columns in the tweak widgets grid
+    maxNumCols = 10  # Maximum number of columns in the tweak widgets grid
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
