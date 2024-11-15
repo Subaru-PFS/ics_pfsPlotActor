@@ -7,7 +7,7 @@ from matplotlib.gridspec import GridSpec
 reload(agUtils)
 
 
-class ShowGuiderErrors(agUtils.AgPlot):
+class ShowGuiderErrorsCombined(agUtils.AgPlot):
     """
     A class to visualize and plot guiding errors using AGC data.
 
@@ -108,3 +108,4 @@ class ShowGuiderErrors(agUtils.AgPlot):
 
         guiders.showAgcErrorsForVisits(agcData, livePlot=self)
         guiders.showGuiderErrors(agcData, config=config, livePlot=self)
+        self.fig.tight_layout()
