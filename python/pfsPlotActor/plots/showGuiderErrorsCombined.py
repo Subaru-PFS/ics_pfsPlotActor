@@ -27,14 +27,6 @@ class ShowGuiderErrorsCombined(agUtils.AgPlot):
     def initialize(self):
         """Initialize your axes"""
         self.colorbar = None
-        # gs = GridSpec(3, 5, figure=self.fig)  # 3 rows and 5 columns
-        #
-        # # Define the first three subplots (1 row, 2 columns each)
-        # ax1 = self.fig.add_subplot(gs[0, 0:2])  # First row, first 2 columns
-        # ax2 = self.fig.add_subplot(gs[1, 0:2])  # Second row, first 2 columns
-        # ax3 = self.fig.add_subplot(gs[2, 0:2])  # Third row, first 2 columns
-        # Define the large subplot (3 rows, 3 columns)
-        # ax4 = fig.add_subplot(gs[:, 2:])  # All rows, last 3 columns
 
         gs = GridSpec(3, 2, figure=self.fig)  # 3 rows and 5 columns
 
