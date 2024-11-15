@@ -59,6 +59,11 @@ class ConvergencePlot(livePlot.LivePlot):
         return pfsDesignId
 
     @staticmethod
+    def getFiducialData(visitId):
+        sql = f'SELECT * from fiducial_fiber_match WHERE pfs_visit_id={visitId}'
+        return sysUtils.pd_read_sql(sql, ConvergencePlot.opdb)
+
+    @staticmethod
     def getPfsDesign(designId):
         return PfsDesign.read(designId, dirName='/data/pfsDesign')
 
