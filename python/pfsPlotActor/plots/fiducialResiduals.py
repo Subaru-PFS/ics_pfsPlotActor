@@ -135,6 +135,8 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
         ax2.set_title("Distribution of RMS")
         ax2.grid(True, linestyle='--', alpha=0.6)  # Add grid for better readability
 
+        fig.tight_layout()
+
     def getPerFiducialRMS(self, fidsData):
         """
         Calculate RMS and displacement for fiducials.
