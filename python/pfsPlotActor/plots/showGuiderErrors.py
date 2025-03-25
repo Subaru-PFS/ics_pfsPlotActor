@@ -24,6 +24,7 @@ class ShowGuiderErrors(agUtils.AgPlot):
     units = dict(maxGuideError='microns', maxPosError='microns', guideErrorEstimate='microns')
 
     def plot(self, agcData, visitId=-1,
+             includeAllVisitsInGroup=True,
              showAverageGuideStarPos=False,
              showAverageGuideStarPath=False,
              showGuideStars=True,
@@ -53,7 +54,7 @@ class ShowGuiderErrors(agUtils.AgPlot):
             ID of the visit being processed (default: -1).
         All other parameters correspond to GuiderConfig settings.
         """
-        agcData = self.selectData(agcData, visitId=visitId)
+        agcData = self.selectData(agcData, visitId=visitId, includeAllVisitsInGroup=includeAllVisitsInGroup)
 
         if not len(agcData):
             return
