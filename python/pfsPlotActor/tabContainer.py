@@ -27,9 +27,12 @@ class TabContainer(QWidget):
         obj = classType(w1.canvas)
         # add dedicated widgets to tweak the plots.
         w1.addTweakingWidgets(obj)
+
         # adding callbacks
-        self.tabWidget.actor.requireModels([obj.actor])
-        self.tabWidget.actor.models[obj.actor].keyVarDict[obj.key].addCallback(obj.update)
+        if not obj.noCallback:
+            self.tabWidget.actor.requireModels([obj.actor])
+            self.tabWidget.actor.models[obj.actor].keyVarDict[obj.key].addCallback(obj.update)
+
         # adding the plotWidget in the layout and remove the button.
         self.layout().addWidget(w1, plotBrowserButton.row, plotBrowserButton.col)
         self.layout().removeWidget(plotBrowserButton)

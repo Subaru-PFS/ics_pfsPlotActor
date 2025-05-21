@@ -8,6 +8,7 @@ class LivePlot(object):
     # actor and key that to attach the callback to.
     actor = None
     key = None
+    noCallback = False
     units = dict()
 
     def __init__(self, canvas):
@@ -47,6 +48,10 @@ class LivePlot(object):
 
     def identify(self, keyvar):
         """Identify data from keyword current value"""
+        # if no callback just return.
+        if self.noCallback:
+            return dict()
+
         values = keyvar.getValue()
         return dict(values=values)
 
