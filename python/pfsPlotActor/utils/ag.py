@@ -48,7 +48,11 @@ class AgPlot(livePlot.LivePlot):
         return ax
 
     def identify(self, keyvar):
-        """load the convergence data"""
+        """load the ag data"""
+        # if no callback just return.
+        if self.noCallback:
+            return dict()
+
         try:
             exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
             sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
