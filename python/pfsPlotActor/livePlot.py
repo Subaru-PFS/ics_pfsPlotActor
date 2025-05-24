@@ -70,7 +70,6 @@ class LivePlot(object):
         try:
             self.plot(**dataId, **self.tweakDict)
         except Exception as e:
-            raise
             logging.warning(e)
 
         self.canvas.draw()

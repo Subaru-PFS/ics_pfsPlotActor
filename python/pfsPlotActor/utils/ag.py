@@ -53,12 +53,9 @@ class AgPlot(livePlot.LivePlot):
         if self.noCallback:
             return dict()
 
-        try:
-            exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
-            sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
-            [visitId, ] = sysUtils.pd_read_sql(sql, AgPlot.opdb).pfs_visit_id.to_numpy()
-        except ValueError:
-            visitId = 1
+        exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
+        sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
+        [visitId, ] = sysUtils.pd_read_sql(sql, AgPlot.opdb).pfs_visit_id.to_numpy()
 
         return self.readData(visitId)
 
