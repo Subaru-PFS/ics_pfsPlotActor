@@ -65,6 +65,7 @@ class LivePlot(object):
         except ValueError:
             dataId = dict()
 
+        print(dataId)
         skipPlotting = dataId.get('skipPlotting', False)
 
         if skipPlotting:
