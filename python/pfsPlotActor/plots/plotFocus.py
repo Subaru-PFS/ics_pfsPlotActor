@@ -79,6 +79,8 @@ class FocusPlot(agUtils.AgPlot):
 
         AGC = [1, 2, 3, 4, 5, 6]
 
+        print('visit=', visit)
+
         guiders.plotFocus(self.opdb, visits, AGC, plotBy=plotBy,
                           colorBy=colorBy,
                           showAGActorFocus=showAGActorFocus,
