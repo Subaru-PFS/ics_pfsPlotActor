@@ -47,7 +47,7 @@ class AgPlot(livePlot.LivePlot):
         ax = self.fig.add_subplot(111)
         return ax
 
-    def identify(self, keyvar):
+    def identify(self, keyvar, **kwargs):
         """load the ag data"""
         # if no callback just return.
         if self.noCallback:

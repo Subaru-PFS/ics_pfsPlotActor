@@ -22,7 +22,7 @@ class FocusPlot(agUtils.AgPlot):
     axes : list of matplotlib.axes.Axes
         List of axes used for plotting.
     """
-    noCallback = True
+
     def initialize(self):
         """Initialize your axes"""
         # Define the first three subplots (1 row, 2 columns each)
@@ -79,8 +79,6 @@ class FocusPlot(agUtils.AgPlot):
 
         AGC = [1, 2, 3, 4, 5, 6]
 
-        print('visit=', visit)
-
         guiders.plotFocus(self.opdb, visits, AGC, plotBy=plotBy,
                           colorBy=colorBy,
                           showAGActorFocus=showAGActorFocus,
@@ -109,9 +107,20 @@ class FocusPlot(agUtils.AgPlot):
 
         self.fig.tight_layout()
 
-    def identify(self, keyvar):
+    def identify(self, keyvar, fromMhs=False):
         """load the ag data"""
         # if no callback just return.
+        if fromMhs:
+            exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
+            sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
+            [visitId, ] = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).pfs_visit_id.to_numpy()
+
+            sql = f"""select pfs_visit_id FROM visit_set INNER JOIN iic_sequence ON """ \
+                  """visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \
+                  f"""WHERE iic_sequence.sequence_type = 'agFocusSweep' and pfs_visit_id={visitId}"""
+
+            if not len(sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb)):
+                return dict(skipPlotting=True)
 
         sql = """SELECT max(pfs_visit_id) FROM visit_set INNER JOIN iic_sequence """ \
               """ON visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \

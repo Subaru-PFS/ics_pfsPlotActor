@@ -87,13 +87,9 @@ class ConvergencePlot(livePlot.LivePlot):
         ax = self.fig.add_subplot(111)
         return ax
 
-    def identify(self, keyvar):
+    def identify(self, keyvar, **kwargs):
         """load the convergence data"""
-        try:
-            designId, visit, status = keyvar.getValue()
-        except ValueError:
-            visit = 0
-
+        designId, visit, status = keyvar.getValue()
         return self.loadConvergence(visit)
 
     def plot(self, convergeData, *args, **kwargs):

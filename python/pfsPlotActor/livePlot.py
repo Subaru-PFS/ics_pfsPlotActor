@@ -46,7 +46,7 @@ class LivePlot(object):
         for ax in self.axes:
             ax.cla()
 
-    def identify(self, keyvar):
+    def identify(self, keyvar, **kwargs):
         """Identify data from keyword current value"""
         # if no callback just return.
         if self.noCallback:
@@ -57,12 +57,18 @@ class LivePlot(object):
 
     def update(self, keyvar=None):
         """Callback called each time a new key is generated, basically clear previous axes and plot latest dataset."""
+        fromMhs = keyvar is not None
         keyvar = self.keyvar if keyvar is None else keyvar
 
         try:
-            dataId = self.identify(keyvar)
+            dataId = self.identify(keyvar, fromMhs=fromMhs)
         except ValueError:
             dataId = dict()
+
+        skipPlotting = dataId.get('skipPlotting', False)
+
+        if skipPlotting:
+            return
 
         self.keyvar = keyvar
 
