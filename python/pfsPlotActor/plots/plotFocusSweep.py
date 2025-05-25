@@ -80,7 +80,7 @@ class FocusSweepPlot(agUtils.AgPlot):
 
         AGC = [1, 2, 3, 4, 5, 6]
 
-        guiders.plotFocus(self.opdb, visits, AGC, plotBy=plotBy,
+        guiders.plotFocus(self.opdb, visits, AGC=AGC, plotBy=plotBy,
                           colorBy=colorBy,
                           showAGActorFocus=showAGActorFocus,
                           showOpdbFocus=showOpdbFocus,
