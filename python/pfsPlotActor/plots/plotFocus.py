@@ -1,3 +1,5 @@
+import hashlib
+import pickle
 from importlib import reload
 
 import pfs.drp.stella.utils.guiders as guiders
@@ -30,6 +32,8 @@ class FocusPlot(agUtils.AgPlot):
     def initialize(self):
         """Initialize your axes"""
         self.colorbar = None
+        self.cacheKey = None
+        self.agcData = None
 
         # Define the first three subplots (1 row, 2 columns each)
         axs = self.fig.subplots(1, 1, sharex=True, height_ratios=[2], squeeze=False)
@@ -37,6 +41,22 @@ class FocusPlot(agUtils.AgPlot):
         # self.fig.subplots_adjust(hspace=0.025)
 
         return axs
+
+    def getCacheKey(self, params: dict) -> str:
+        """
+        Generate a stable cache key based on relevant parameters.
+
+        Parameters
+        ----------
+        params : dict
+            Dictionary of keyword arguments that affect plotting behavior.
+
+        Returns
+        -------
+        str
+            A hexadecimal MD5 hash string representing the cache key.
+        """
+        return hashlib.md5(pickle.dumps(params)).hexdigest()
 
     def plot(self, latestSpsVisit, visitStart=-10, visitEnd=-1, plotBy="agc_exposure_id",
              colorBy="camera",
@@ -48,7 +68,7 @@ class FocusPlot(agUtils.AgPlot):
              showCameraId=False,
              showFocusSets=True,
              onlyGuideStars=True,
-             plotFrac=1,
+             plotFrac=1.0,
              ditherScale=5e-3,
              yLimitsMicron=220,
              useTraceRadius=True,
@@ -84,7 +104,7 @@ class FocusPlot(agUtils.AgPlot):
 
         AGC = [1, 2, 3, 4, 5, 6]
 
-        guiders.plotFocus(self.opdb, visits, AGC=AGC, plotBy=plotBy,
+        plotParams = dict(plotBy=plotBy,
                           colorBy=colorBy,
                           showAGActorFocus=showAGActorFocus,
                           showOpdbFocus=showOpdbFocus,
@@ -107,10 +127,20 @@ class FocusPlot(agUtils.AgPlot):
                           maxFWHM=maxFWHM,
                           mmToMicrons=mmToMicrons,
                           useM2Off3=useM2Off3,
-                          forceAlpha=forceAlpha,
-                          figure=self.fig, axes=self.axes)
+                          forceAlpha=forceAlpha)
+
+        cacheKey = self.getCacheKey(plotParams)
+        useCache = self.cacheKey and cacheKey != self.cacheKey
+
+        useAgcData = self.agcData if useCache else None
+
+        agcData = guiders.plotFocus(self.opdb, visits, agcData=useAgcData, AGC=AGC,
+                                    **plotParams, figure=self.fig, axes=self.axes)
 
         self.fig.tight_layout()
+
+        self.cacheKey = cacheKey
+        self.agcData = agcData
 
     def selectVisit(self, latestVisit, visitId):
         """The user might choose another visitId."""

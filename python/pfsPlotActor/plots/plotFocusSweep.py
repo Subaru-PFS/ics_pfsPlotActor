@@ -45,7 +45,7 @@ class FocusSweepPlot(agUtils.AgPlot):
              showCameraId=False,
              showFocusSets=False,
              onlyGuideStars=True,
-             plotFrac=1,
+             plotFrac=1.0,
              ditherScale=5e-3,
              yLimitsMicron=220,
              useTraceRadius=True,
