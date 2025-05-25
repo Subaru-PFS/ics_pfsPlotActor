@@ -58,7 +58,8 @@ class FocusPlot(agUtils.AgPlot):
         """
         return hashlib.md5(pickle.dumps(params)).hexdigest()
 
-    def plot(self, latestSpsVisit, visitStart=-10, visitEnd=-1, plotBy="agc_exposure_id",
+    def plot(self, latestSpsVisit, visitStart=-10, visitEnd=-1,
+             plotBy=("agc_exposure_id", "altitude", "insrot", "focus"),
              colorBy="camera",
              showPfiFocusPosition=False,
              averageByFocusPosition=False,

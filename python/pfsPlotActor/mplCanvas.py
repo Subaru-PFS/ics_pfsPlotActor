@@ -92,22 +92,26 @@ class MplWidget(QWidget):
             if paramValue.default is inspect._empty:
                 continue
 
-            # Determine widget class based on parameter type
-            widgetClass = {
-                bool: tweaks.CheckBox,
-                int: tweaks.Int,
-                float: tweaks.Float,
-                str: tweaks.String
-            }.get(type(paramValue.default), None)
+            defaultVal = paramValue.default
+            paramType = type(defaultVal)
 
-            if widgetClass is None:
+            if isinstance(defaultVal, tuple):
+                # Treat tuples as a list of options for ComboBox
+                widget = tweaks.ComboBox(paramName, unit=livePlot.units.get(paramName, None), choices=defaultVal)
+                widget.setValue(defaultVal[0])  # Set to first item or default if needed
+            elif paramType in (bool, int, float, str):
+                widgetClass = {
+                    bool: tweaks.CheckBox,
+                    int: tweaks.Int,
+                    float: tweaks.Float,
+                    str: tweaks.String
+                }[paramType]
+
+                widget = widgetClass(paramName, unit=livePlot.units.get(paramName, None))
+                widget.setValue(defaultVal)
+            else:
                 continue
 
-            unit = livePlot.units.get(paramName, None)
-
-            # Initialize and configure the widget
-            widget = widgetClass(paramName, unit=unit)
-            widget.setValue(paramValue.default)
             widget.attachCallback(livePlot.update)
             tweakDict[paramName] = widget
             widgets.append(widget)
