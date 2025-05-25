@@ -1,6 +1,7 @@
 from importlib import reload
 
 import pfsPlotActor.utils.pfi as pfiUtils
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 reload(pfiUtils)
 
@@ -96,7 +97,10 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
 
         # Update or create colorbar
         if self.colorbar is None:
-            self.colorbar = fig.colorbar(sc, ax=ax1)
+            divider = make_axes_locatable(ax1)
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+            self.colorbar = fig.colorbar(sc, cax=cax)
+            # self.colorbar = fig.colorbar(sc, ax=ax1)
         else:
             self.colorbar.update_normal(sc)
 
@@ -153,8 +157,8 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
         DataFrame
             Fiducial RMS, displacement, and metadata.
         """
-        fidsData['dx'] = 0
-        fidsData['dy'] = 0
+        fidsData['dx'] = np.zeros(len(fidsData), dtype=float)
+        fidsData['dy'] = np.zeros(len(fidsData), dtype=float)
         fidsData['FIDUCIALS_OK'] = False
 
         # Calculate displacements
@@ -188,21 +192,32 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
         DataFrame
             Broken cobra RMS, displacement, and metadata.
         """
-        brokenCobras = convergeData[
-            convergeData.cobra_id.isin(sgfm[~sgfm.FIBER_BROKEN_MASK & ~sgfm.COBRA_OK_MASK].cobraId)]
-        brokenCobras['dx'] = 0
-        brokenCobras['dy'] = 0
+        brokenMask = sgfm[~sgfm.FIBER_BROKEN_MASK & ~sgfm.COBRA_OK_MASK].cobraId
+        brokenCobras = convergeData[convergeData.cobra_id.isin(brokenMask)].copy()
+
+        # Ensure dx/dy columns exist with float dtype
+        brokenCobras['dx'] = 0.0
+        brokenCobras['dy'] = 0.0
 
         # Calculate displacements
         for iteration, dfi in brokenCobras.groupby('iteration'):
-            brokenCobras.loc[dfi.index, 'dx'] = sgfm.x.to_numpy()[dfi.cobra_id - 1] - dfi.pfi_center_x_mm.to_numpy()
-            brokenCobras.loc[dfi.index, 'dy'] = sgfm.y.to_numpy()[dfi.cobra_id - 1] - dfi.pfi_center_y_mm.to_numpy()
+            cobraIndices = dfi.cobra_id.to_numpy() - 1
+            xDiff = sgfm.x.to_numpy()[cobraIndices] - dfi.pfi_center_x_mm.to_numpy()
+            yDiff = sgfm.y.to_numpy()[cobraIndices] - dfi.pfi_center_y_mm.to_numpy()
 
-        brokenCobras['dist'] = np.hypot(brokenCobras.dx.to_numpy(), brokenCobras.dy.to_numpy())
+            brokenCobras.loc[dfi.index, 'dx'] = xDiff
+            brokenCobras.loc[dfi.index, 'dy'] = yDiff
+
+        brokenCobras['dist'] = np.hypot(brokenCobras['dx'], brokenCobras['dy'])
 
         rmsVal = pd.DataFrame(
-            [(cobraId, 1000 * np.std(dfi.dist, ddof=1), 1000 * np.mean(dfi.dx), 1000 * np.mean(dfi.dy),
-              1000 * np.mean(dfi.dist)) for cobraId, dfi in brokenCobras.groupby('cobra_id')],
-            columns=['cobraId', 'rms', 'dx', 'dy', 'dist'])
+            [(cobraId,
+              1000 * np.std(dfi.dist, ddof=1),
+              1000 * np.mean(dfi.dx),
+              1000 * np.mean(dfi.dy),
+              1000 * np.mean(dfi.dist))
+             for cobraId, dfi in brokenCobras.groupby('cobra_id')],
+            columns=['cobraId', 'rms', 'dx', 'dy', 'dist']
+        )
 
         return pd.merge(rmsVal, sgfm[['cobraId', 'fiberId', 'x', 'y']], on='cobraId', how='inner')

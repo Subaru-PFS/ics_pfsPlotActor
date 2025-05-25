@@ -3,6 +3,7 @@ from importlib import reload
 import matplotlib.pyplot as plt
 import numpy as np
 import pfsPlotActor.utils.pfi as pfiUtils
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from pfs.datamodel import TargetType
 from pfsPlotActor.utils.sgfm import calibModel
 
@@ -72,7 +73,9 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
             # creating new colorbar.
             # cbar_ax = fig.add_axes([0.45, 0.15, 0.02, 0.7])
             # self.colorbar = fig.colorbar(sc, cax=cbar_ax)
-            self.colorbar = fig.colorbar(sc, ax=ax1)
+            divider = make_axes_locatable(ax1)
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+            self.colorbar = fig.colorbar(sc, cax=cax)
 
         else:
             # or update existing one.

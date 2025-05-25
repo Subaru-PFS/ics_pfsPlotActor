@@ -1,8 +1,18 @@
 import logging
 from collections.abc import Iterable
 
+import matplotlib as mpl
 import psycopg2
 
+mpl.rcParams.update({
+    'font.size': 12,              # Default font size for everything
+    'axes.titlesize': 14,         # Title of each subplot
+    'axes.labelsize': 12,         # x and y labels
+    'xtick.labelsize': 10,        # x-axis tick labels
+    'ytick.labelsize': 10,        # y-axis tick labels
+    'legend.fontsize': 11,        # Legend text
+    'figure.titlesize': 16        # suptitle size
+})
 
 class LivePlot(object):
     # actor and key that to attach the callback to.
