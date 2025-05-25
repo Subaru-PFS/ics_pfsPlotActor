@@ -51,7 +51,7 @@ class FocusSweepPlot(agUtils.AgPlot):
              useTraceRadius=True,
              magMin='None',
              magMax='None',
-             minFWHM=0.45,
+             minFWHM=0.3,
              maxFWHM=1.95,
              mmToMicrons=1e3,
              useM2Off3=True,

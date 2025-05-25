@@ -1,6 +1,7 @@
 from importlib import reload
 
 import pfs.drp.stella.utils.guiders as guiders
+import pfs.drp.stella.utils.sysUtils as sysUtils
 import pfsPlotActor.utils.ag as agUtils
 
 reload(agUtils)
@@ -23,6 +24,9 @@ class FocusPlot(agUtils.AgPlot):
     """
     units = dict(maxGuideError='microns', maxPosError='microns', guideErrorEstimate='microns')
 
+    actor = 'sps'
+    key = 'fileIds'
+
     def initialize(self):
         """Initialize your axes"""
         self.colorbar = None
@@ -34,11 +38,11 @@ class FocusPlot(agUtils.AgPlot):
 
         return axs
 
-    def plot(self, latestVisit, visitId=-1, plotBy="agc_exposure_id",
+    def plot(self, latestSpsVisit, visitStart=-10, visitEnd=-1, plotBy="agc_exposure_id",
              colorBy="camera",
              showPfiFocusPosition=False,
              averageByFocusPosition=False,
-             showMedian=True,
+             showMedian=False,
              showOnlyMedian=False,
              connectMedian=False,
              showCameraId=False,
@@ -51,7 +55,7 @@ class FocusPlot(agUtils.AgPlot):
              magMin='None',
              magMax='None',
              minFWHM=0.3,
-             maxFWHM=1.59,
+             maxFWHM=1.95,
              mmToMicrons=1e3,
              useM2Off3=True,
              forceAlpha=0.5, *args, **kwargs):
@@ -66,8 +70,9 @@ class FocusPlot(agUtils.AgPlot):
             ID of the visit being processed (default: -1).
         All other parameters correspond to GuiderConfig settings.
         """
-        visit = self.selectVisit(latestVisit, visitId=visitId)
-        visits = agUtils.AgPlot.getAllVisits(visit)
+        visitEnd = self.selectVisit(latestSpsVisit, visitEnd)
+        visitStart = visitEnd + visitStart if visitStart < 0 else visitStart
+        visits = list(range(visitStart, visitEnd + 1))
 
         showAGActorFocus = False
         showOpdbFocus = True
@@ -113,3 +118,14 @@ class FocusPlot(agUtils.AgPlot):
         selectedVisit = -1 if selectedVisit is None else selectedVisit
 
         return selectedVisit
+
+    def identify(self, keyvar, newValue):
+        """load the ag data"""
+        visitId, camList, camMask = keyvar.getValue()
+        sql = f'select exp_type from sps_visit where pfs_visit_id={visitId}'
+        exptype = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
+
+        if exptype != 'object':
+            return dict(skipPlotting=True)
+
+        return dict(dataId=visitId)

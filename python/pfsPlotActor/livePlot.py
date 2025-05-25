@@ -72,10 +72,10 @@ class LivePlot(object):
         """Callback called each time a new key is generated, basically clear previous axes and plot latest dataset."""
         dataIdFromKeyword = self.getDataIdFromKeyword(keyvar)
 
+        dataId = dataIdFromKeyword.get('dataId')
         skipPlotting = dataIdFromKeyword.get('skipPlotting', False)
-        dataId = dataIdFromKeyword.get('dataId', None)
 
-        if skipPlotting:
+        if skipPlotting or (dataId is None and not self.noCallback):
             return
 
         self.clear()
