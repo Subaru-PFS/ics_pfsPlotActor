@@ -17,6 +17,11 @@ class AgPlot(livePlot.LivePlot):
         This does a join on cobra_target and cobra_match to get both target and actual positions.
         This loads the results at a given iteration
         """
+        visits = AgPlot.getAllVisits(visitId, includeAllVisitsInGroup=includeAllVisitsInGroup)
+        return guiders.readAgcDataFromOpdb(AgPlot.opdb, visits=visits)
+
+    @staticmethod
+    def getAllVisits(visitId, includeAllVisitsInGroup=False):
         visits = [visitId]
 
         if includeAllVisitsInGroup:
@@ -31,7 +36,7 @@ class AgPlot(livePlot.LivePlot):
                 visits += list(allVisits.pfs_visit_id)
                 visits = list(set(visits))
 
-        return guiders.readAgcDataFromOpdb(AgPlot.opdb, visits=visits)
+        return visits
 
     def initialize(self):
         """Initialize your axes and colorbar"""
@@ -45,7 +50,7 @@ class AgPlot(livePlot.LivePlot):
         sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
         [visitId, ] = sysUtils.pd_read_sql(sql, AgPlot.opdb).pfs_visit_id.to_numpy()
 
-        return visitId
+        return dict(dataId=visitId)
 
     def plot(self, agcData, *args, **kwargs):
         """Plot the latest dataset."""

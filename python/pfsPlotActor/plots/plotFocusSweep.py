@@ -1,12 +1,13 @@
 from importlib import reload
 
 import pfs.drp.stella.utils.guiders as guiders
+import pfs.drp.stella.utils.sysUtils as sysUtils
 import pfsPlotActor.utils.ag as agUtils
 
 reload(agUtils)
 
 
-class FocusPlot(agUtils.AgPlot):
+class FocusSweepPlot(agUtils.AgPlot):
     """
     A class to visualize and plot guiding errors using AGC data.
 
@@ -28,13 +29,13 @@ class FocusPlot(agUtils.AgPlot):
         self.colorbar = None
 
         # Define the first three subplots (1 row, 2 columns each)
-        axs = self.fig.subplots(1, 1, sharex=True, height_ratios=[2], squeeze=False)
+        axs = self.fig.subplots(2, 1, sharex=True, height_ratios=[2, 3], squeeze=False)
         axs = axs.flatten()
         # self.fig.subplots_adjust(hspace=0.025)
 
         return axs
 
-    def plot(self, latestVisit, visitId=-1, plotBy="agc_exposure_id",
+    def plot(self, latestFocusVisitId, visitId=-1, plotBy="focus",
              colorBy="camera",
              showPfiFocusPosition=False,
              averageByFocusPosition=False,
@@ -42,7 +43,7 @@ class FocusPlot(agUtils.AgPlot):
              showOnlyMedian=False,
              connectMedian=False,
              showCameraId=False,
-             showFocusSets=True,
+             showFocusSets=False,
              onlyGuideStars=True,
              plotFrac=1,
              ditherScale=5e-3,
@@ -50,11 +51,11 @@ class FocusPlot(agUtils.AgPlot):
              useTraceRadius=True,
              magMin='None',
              magMax='None',
-             minFWHM=0.3,
-             maxFWHM=1.59,
+             minFWHM=0.45,
+             maxFWHM=1.95,
              mmToMicrons=1e3,
              useM2Off3=True,
-             forceAlpha=0.5, *args, **kwargs):
+             forceAlpha='None', *args, **kwargs):
         """
         Configure the GuiderConfig object and call the plotting routine.
 
@@ -66,12 +67,12 @@ class FocusPlot(agUtils.AgPlot):
             ID of the visit being processed (default: -1).
         All other parameters correspond to GuiderConfig settings.
         """
-        visit = self.selectVisit(latestVisit, visitId=visitId)
-        visits = agUtils.AgPlot.getAllVisits(visit)
+        visit = self.selectVisit(latestFocusVisitId, visitId=visitId)
+        visits = [visit]
 
         showAGActorFocus = False
         showOpdbFocus = True
-        showFWHM = False
+        showFWHM = True
 
         magMin = None if magMin == 'None' else float(magMin)
         magMax = None if magMax == 'None' else float(magMax)
@@ -107,9 +108,32 @@ class FocusPlot(agUtils.AgPlot):
 
         self.fig.tight_layout()
 
-    def selectVisit(self, latestVisit, visitId):
+    def identify(self, keyvar, newValue):
+        """load the ag data"""
+        # if no callback just return.
+        if newValue:
+            exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
+            sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
+            [visitId, ] = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).pfs_visit_id.to_numpy()
+
+            sql = f"""select pfs_visit_id FROM visit_set INNER JOIN iic_sequence ON """ \
+                  """visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \
+                  f"""WHERE iic_sequence.sequence_type = 'agFocusSweep' and pfs_visit_id={visitId}"""
+
+            if not len(sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb)):
+                return dict(skipPlotting=True)
+
+        sql = """SELECT max(pfs_visit_id) FROM visit_set INNER JOIN iic_sequence """ \
+              """ON visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \
+              """WHERE iic_sequence.sequence_type = 'agFocusSweep'"""
+
+        lastFocusVisit = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
+
+        return dict(dataId=lastFocusVisit)
+
+    def selectVisit(self, latestFocusVisitId, visitId):
         """The user might choose another visitId."""
-        selectedVisit = latestVisit if visitId == -1 else visitId
+        selectedVisit = latestFocusVisitId if visitId == -1 else visitId
         selectedVisit = -1 if selectedVisit is None else selectedVisit
 
         return selectedVisit
