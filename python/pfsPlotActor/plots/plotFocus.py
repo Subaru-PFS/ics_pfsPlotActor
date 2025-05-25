@@ -55,7 +55,7 @@ class FocusPlot(agUtils.AgPlot):
              magMin='None',
              magMax='None',
              minFWHM=0.3,
-             maxFWHM=1.95,
+             maxFWHM=1.59,
              mmToMicrons=1e3,
              useM2Off3=True,
              forceAlpha=0.5, *args, **kwargs):
