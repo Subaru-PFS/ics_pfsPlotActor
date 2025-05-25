@@ -9,13 +9,13 @@ reload(pfiUtils)
 class ConvergenceMap(pfiUtils.ConvergencePlot):
     units = dict(vmin='microns', vmax='microns')
 
-    def plot(self, convergeData, visitId=-1, nIter=-1, vmin='auto', vmax='auto'):
+    def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin='auto', vmax='auto'):
         """Plot the latest dataset."""
         fig = self.fig
         ax = self.axes[0]
 
-        # Get chosen convergence default is current.
-        convergeData = self.chosenConvergence(convergeData, visitId=visitId)
+        # Get convergence dataframe default is latest.
+        convergeData = self.selectData(latestVisitId, visitId=visitId)
         if not len(convergeData):
             return
 

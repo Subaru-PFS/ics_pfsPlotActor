@@ -17,14 +17,14 @@ class SpotSize(pfiUtils.ConvergencePlot):
         ax2 = [self.fig.add_subplot(212)]
         return ax1 + ax2
 
-    def plot(self, convergeData, visitId=-1, vmin='auto', vmax='auto'):
+    def plot(self, latestVisitId, visitId=-1, vmin='auto', vmax='auto'):
         """Plot the latest dataset."""
         fig = self.fig
         ax1 = self.axes[0]
         ax2 = self.axes[1]
 
-        # Get chosen convergence default is current.
-        convergeData = self.chosenConvergence(convergeData, visitId=visitId)
+        # Get convergence dataframe default is latest.
+        convergeData = self.selectData(latestVisitId, visitId=visitId)
         if not len(convergeData):
             return
 

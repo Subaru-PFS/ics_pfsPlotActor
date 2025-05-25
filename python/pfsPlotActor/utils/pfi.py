@@ -42,8 +42,7 @@ class ConvergencePlot(livePlot.LivePlot):
               f'on md.mcs_frame_id = cm.pfs_visit_id * 100 + cm.iteration and md.spot_id = cm.spot_id where cm.pfs_visit_id = {visitId} order by ct.cobra_id, ct.iteration'
 
         # get data
-        convergeData = sysUtils.pd_read_sql(sql, ConvergencePlot.opdb)
-        return dict(convergeData=convergeData)
+        return sysUtils.pd_read_sql(sql, ConvergencePlot.opdb)
 
     @staticmethod
     def loadTargetType(visitId):
@@ -67,6 +66,21 @@ class ConvergencePlot(livePlot.LivePlot):
     def getPfsDesign(designId):
         return PfsDesign.read(designId, dirName='/data/pfsDesign')
 
+    def initialize(self):
+        """Initialize your axes and colorbar"""
+        self.colorbar = None
+        ax = self.fig.add_subplot(111)
+        return ax
+
+    def identify(self, keyvar, newValue):
+        """identify visit from keyvar"""
+        designId, visit, status = keyvar.getValue()
+        return dict(dataId=visit)
+
+    def plot(self, latestVisitId, *args, **kwargs):
+        """Plot the latest dataset."""
+        pass
+
     def addTargetInfo(self, iterData, targetType):
         """add target information."""
         iterData = iterData.copy()
@@ -74,31 +88,11 @@ class ConvergencePlot(livePlot.LivePlot):
         iterData['targetType'] = targetType.set_index('fiber_id').loc[iterData.fiberId.to_numpy()].to_numpy()
         return iterData
 
-    def chosenConvergence(self, convergenceData, visitId):
+    def selectData(self, latestVisitId, visitId):
         """The user might choose another visitId."""
-        if visitId == -1:
-            return convergenceData
-
-        return self.loadConvergence(visitId)['convergeData']
-
-    def initialize(self):
-        """Initialize your axes and colorbar"""
-        self.colorbar = None
-        ax = self.fig.add_subplot(111)
-        return ax
-
-    def identify(self, keyvar):
-        """load the convergence data"""
-        try:
-            designId, visit, status = keyvar.getValue()
-        except ValueError:
-            visit = 0
-
-        return self.loadConvergence(visit)
-
-    def plot(self, convergeData, *args, **kwargs):
-        """Plot the latest dataset."""
-        pass
+        selectedVisit = latestVisitId if visitId == -1 else visitId
+        selectedVisit = -1 if selectedVisit is None else selectedVisit
+        return self.loadConvergence(selectedVisit)
 
     def reloadDesign(self, visitId):
         """Reload PfsDesign"""

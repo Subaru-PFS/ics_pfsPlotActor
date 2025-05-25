@@ -19,14 +19,14 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         ax2 = [self.fig.add_subplot(122)]
         return ax1 + ax2
 
-    def plot(self, convergeData, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3, showPercentiles='75,95'):
+    def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3, showPercentiles='75,95'):
         """Plot the latest dataset."""
         fig = self.fig
         ax1 = self.axes[0]
         ax2 = self.axes[1]
 
-        # Get chosen convergence default is current.
-        convergeData = self.chosenConvergence(convergeData, visitId=visitId)
+        # Get convergence dataframe default is latest.
+        convergeData = self.selectData(latestVisitId, visitId=visitId)
         if not len(convergeData):
             return
 

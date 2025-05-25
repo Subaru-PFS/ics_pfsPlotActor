@@ -30,7 +30,7 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
         ax2 = self.fig.add_subplot(122)  # Histogram of RMS
         return [ax1, ax2]
 
-    def plot(self, convergeData, visitId=-1, vmin=0, vmax=15, addBrokenCobras=False,
+    def plot(self, latestVisitId, visitId=-1, vmin=0, vmax=15, addBrokenCobras=False,
              showDisplacementAsArrow=False, bins=20, arrowSize='auto'):
         """
         Plot fiducial and cobra residuals with optional arrows and histogram.
@@ -55,8 +55,9 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
         fig = self.fig
         ax1, ax2 = self.axes
 
-        # Filter convergence data
-        convergeData = self.chosenConvergence(convergeData, visitId=visitId)
+        # Get convergence dataframe default is latest.
+        convergeData = self.selectData(latestVisitId, visitId=visitId)
+
         if not len(convergeData):
             return
 
@@ -65,6 +66,7 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
 
         # Get fiducial data
         fidsData = self.getFiducialData(visitId)
+
         if not len(fidsData):
             return
 
