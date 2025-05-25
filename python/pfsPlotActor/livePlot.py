@@ -46,36 +46,47 @@ class LivePlot(object):
         for ax in self.axes:
             ax.cla()
 
-    def identify(self, keyvar):
+    def identify(self, keyvar, newValue):
         """Identify data from keyword current value"""
-        # if no callback just return.
-        if self.noCallback:
-            return dict()
+        return dict(dataId=keyvar.getValue())
 
-        values = keyvar.getValue()
-        return dict(values=values)
-
-    def update(self, keyvar=None):
-        """Callback called each time a new key is generated, basically clear previous axes and plot latest dataset."""
+    def getDataIdFromKeyword(self, keyvar):
+        newValue = keyvar is not None
         keyvar = self.keyvar if keyvar is None else keyvar
 
-        try:
-            dataId = self.identify(keyvar)
-        except ValueError:
-            dataId = dict()
+        # I think that's the equivalent.
+        if self.noCallback or keyvar is None:
+            return dict()
 
         self.keyvar = keyvar
 
+        # trying to get data from the keyword, newValue means that the keyword callback triggered that call.
+        try:
+            dataIdFromKeyword = self.identify(keyvar, newValue=newValue)
+        except ValueError:
+            dataIdFromKeyword = dict()
+
+        return dataIdFromKeyword
+
+    def update(self, keyvar=None):
+        """Callback called each time a new key is generated, basically clear previous axes and plot latest dataset."""
+        dataIdFromKeyword = self.getDataIdFromKeyword(keyvar)
+
+        dataId = dataIdFromKeyword.get('dataId')
+        skipPlotting = dataIdFromKeyword.get('skipPlotting', False)
+
+        if skipPlotting or (dataId is None and not self.noCallback):
+            return
+
         self.clear()
         try:
-            self.plot(**dataId, **self.tweakDict)
+            self.plot(dataId, **self.tweakDict)
         except Exception as e:
-            raise
             logging.warning(e)
 
         self.canvas.draw()
 
-    def plot(self, *args, **kwargs):
+    def plot(self, dataFromKeyword, **kwargs):
         """Plot prototype."""
         pass
 

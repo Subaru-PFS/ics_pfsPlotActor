@@ -7,7 +7,7 @@ import pfsPlotActor.utils.ag as agUtils
 reload(agUtils)
 
 
-class FocusPlot(agUtils.AgPlot):
+class FocusSweepPlot(agUtils.AgPlot):
     """
     A class to visualize and plot guiding errors using AGC data.
 
@@ -24,29 +24,26 @@ class FocusPlot(agUtils.AgPlot):
     """
     units = dict(maxGuideError='microns', maxPosError='microns', guideErrorEstimate='microns')
 
-    actor = 'sps'
-    key = 'fileIds'
-
     def initialize(self):
         """Initialize your axes"""
         self.colorbar = None
 
         # Define the first three subplots (1 row, 2 columns each)
-        axs = self.fig.subplots(1, 1, sharex=True, height_ratios=[2], squeeze=False)
+        axs = self.fig.subplots(2, 1, sharex=True, height_ratios=[2, 3], squeeze=False)
         axs = axs.flatten()
         # self.fig.subplots_adjust(hspace=0.025)
 
         return axs
 
-    def plot(self, latestSpsVisit, visitStart=-10, visitEnd=-1, plotBy="agc_exposure_id",
+    def plot(self, latestFocusVisitId, visitId=-1, plotBy="focus",
              colorBy="camera",
              showPfiFocusPosition=False,
              averageByFocusPosition=False,
-             showMedian=False,
+             showMedian=True,
              showOnlyMedian=False,
              connectMedian=False,
              showCameraId=False,
-             showFocusSets=True,
+             showFocusSets=False,
              onlyGuideStars=True,
              plotFrac=1,
              ditherScale=5e-3,
@@ -58,7 +55,7 @@ class FocusPlot(agUtils.AgPlot):
              maxFWHM=1.95,
              mmToMicrons=1e3,
              useM2Off3=True,
-             forceAlpha=0.5, *args, **kwargs):
+             forceAlpha='None', *args, **kwargs):
         """
         Configure the GuiderConfig object and call the plotting routine.
 
@@ -70,13 +67,12 @@ class FocusPlot(agUtils.AgPlot):
             ID of the visit being processed (default: -1).
         All other parameters correspond to GuiderConfig settings.
         """
-        visitEnd = self.selectVisit(latestSpsVisit, visitEnd)
-        visitStart = visitEnd + visitStart if visitStart < 0 else visitStart
-        visits = list(range(visitStart, visitEnd + 1))
+        visit = self.selectVisit(latestFocusVisitId, visitId=visitId)
+        visits = [visit]
 
         showAGActorFocus = False
         showOpdbFocus = True
-        showFWHM = False
+        showFWHM = True
 
         magMin = None if magMin == 'None' else float(magMin)
         magMax = None if magMax == 'None' else float(magMax)
@@ -112,20 +108,32 @@ class FocusPlot(agUtils.AgPlot):
 
         self.fig.tight_layout()
 
-    def selectVisit(self, latestVisit, visitId):
+    def identify(self, keyvar, newValue):
+        """load the ag data"""
+        # if no callback just return.
+        if newValue:
+            exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
+            sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
+            [visitId, ] = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).pfs_visit_id.to_numpy()
+
+            sql = f"""select pfs_visit_id FROM visit_set INNER JOIN iic_sequence ON """ \
+                  """visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \
+                  f"""WHERE iic_sequence.sequence_type = 'agFocusSweep' and pfs_visit_id={visitId}"""
+
+            if not len(sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb)):
+                return dict(skipPlotting=True)
+
+        sql = """SELECT max(pfs_visit_id) FROM visit_set INNER JOIN iic_sequence """ \
+              """ON visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \
+              """WHERE iic_sequence.sequence_type = 'agFocusSweep'"""
+
+        lastFocusVisit = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
+
+        return dict(dataId=lastFocusVisit)
+
+    def selectVisit(self, latestFocusVisitId, visitId):
         """The user might choose another visitId."""
-        selectedVisit = latestVisit if visitId == -1 else visitId
+        selectedVisit = latestFocusVisitId if visitId == -1 else visitId
         selectedVisit = -1 if selectedVisit is None else selectedVisit
 
         return selectedVisit
-
-    def identify(self, keyvar, newValue):
-        """load the ag data"""
-        visitId, camList, camMask = keyvar.getValue()
-        sql = f'select exp_type from sps_visit where pfs_visit_id={visitId}'
-        exptype = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
-
-        if exptype != 'object':
-            return dict(skipPlotting=True)
-
-        return dict(dataId=visitId)

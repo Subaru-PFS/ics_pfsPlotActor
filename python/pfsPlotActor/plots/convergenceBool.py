@@ -9,13 +9,13 @@ reload(pfiUtils)
 class ConvergenceBool(pfiUtils.ConvergencePlot):
     units = dict(tolerance='mm')
 
-    def plot(self, convergeData, visitId=-1, nIter=-1, tolerance=0.01):
+    def plot(self, latestVisitId, visitId=-1, nIter=-1, tolerance=0.01):
         """Plot the latest dataset."""
         fig = self.fig
         ax = self.axes[0]
 
-        # Get chosen convergence default is current.
-        convergeData = self.chosenConvergence(convergeData, visitId=visitId)
+        # Get convergence dataframe default is latest.
+        convergeData = self.selectData(latestVisitId, visitId=visitId)
         if not len(convergeData):
             return
 

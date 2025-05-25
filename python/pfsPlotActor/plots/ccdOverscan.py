@@ -19,12 +19,12 @@ class CcdOverscan(livePlot.LivePlot):
         self.ax2 = [self.fig.add_subplot(gs[nAmp, -1]) for nAmp in range(8)]
         return self.ax1 + self.ax2
 
-    def identify(self, keyvar):
+    def identify(self, keyvar, newValue):
         """Reconstruct the absolute filepath from the latest generated filepath."""
         [root, night, fname] = keyvar.getValue()
         args = [root, night, 'sps', fname]
         filepath = os.path.join(*args)
-        return dict(filepath=filepath)
+        return dict(dataId=filepath)
 
     def plot(self, filepath, nSigma=5):
         """Plot the latest dataset."""

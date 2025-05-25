@@ -15,14 +15,14 @@ class SequencePlot(pfiUtils.ConvergencePlot):
         indices = self.goodIdx if cobraNum is None else [cobraNum - 1]
         return indices
 
-    def plot(self, convergeData, visitId=-1, cobraNum='all', minIter=3, centrePos=True, hardStop=False, blackDots=True,
+    def plot(self, latestVisitId, visitId=-1, cobraNum='all', minIter=3, centrePos=True, hardStop=False, blackDots=True,
              badCobras=False, patrolRegion=True, ff=True, showDesign=True):
         """Plot the latest dataset."""
         fig = self.fig
         ax = self.axes[0]
 
-        # Get chosen convergence default is current.
-        convergeData = self.chosenConvergence(convergeData, visitId=visitId)
+        # Get convergence dataframe default is latest.
+        convergeData = self.selectData(latestVisitId, visitId=visitId)
         if not len(convergeData):
             return
 
