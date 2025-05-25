@@ -1,5 +1,5 @@
 import pfsPlotActor.layout as layout
-from PyQt5.QtWidgets import QCheckBox, QGroupBox, QSizePolicy, QLineEdit
+from PyQt5.QtWidgets import QCheckBox, QGroupBox, QSizePolicy, QLineEdit, QComboBox
 
 
 class Tweak(QGroupBox):
@@ -61,3 +61,23 @@ class String(Tweak):
 
     def setValue(self, value):
         self.value.setText(str(value))
+
+
+class ComboBox(Tweak):
+    valueType = QComboBox
+
+    def __init__(self, title, unit=None, choices=()):
+        super().__init__(title, unit=unit)
+        self.value.addItems([str(choice) for choice in choices])
+        self.choices = choices  # Keep reference for getValue
+
+    def getValue(self):
+        return self.choices[self.value.currentIndex()]
+
+    def setValue(self, value):
+        if value in self.choices:
+            self.value.setCurrentIndex(self.choices.index(value))
+
+    def attachCallback(self, callback):
+        self.updateCallback = callback
+        self.value.currentIndexChanged.connect(self.updatePlot)
