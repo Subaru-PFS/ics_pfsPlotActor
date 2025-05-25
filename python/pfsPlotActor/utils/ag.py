@@ -31,15 +31,7 @@ class AgPlot(livePlot.LivePlot):
                 visits += list(allVisits.pfs_visit_id)
                 visits = list(set(visits))
 
-        agcData = guiders.readAgcDataFromOpdb(AgPlot.opdb, visits=visits)
-        return dict(agcData=agcData)
-
-    def selectData(self, dataset, visitId, includeAllVisitsInGroup=False):
-        """The user might choose another visitId."""
-        if visitId == -1:
-            return dataset
-
-        return self.readData(visitId, includeAllVisitsInGroup=includeAllVisitsInGroup)['agcData']
+        return guiders.readAgcDataFromOpdb(AgPlot.opdb, visits=visits)
 
     def initialize(self):
         """Initialize your axes and colorbar"""
@@ -47,21 +39,21 @@ class AgPlot(livePlot.LivePlot):
         ax = self.fig.add_subplot(111)
         return ax
 
-    def identify(self, keyvar):
+    def identify(self, keyvar, newValue):
         """load the ag data"""
-        # if no callback just return.
-        if self.noCallback:
-            return dict()
+        exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
+        sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
+        [visitId, ] = sysUtils.pd_read_sql(sql, AgPlot.opdb).pfs_visit_id.to_numpy()
 
-        try:
-            exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
-            sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
-            [visitId, ] = sysUtils.pd_read_sql(sql, AgPlot.opdb).pfs_visit_id.to_numpy()
-        except ValueError:
-            visitId = 1
-
-        return self.readData(visitId)
+        return visitId
 
     def plot(self, agcData, *args, **kwargs):
         """Plot the latest dataset."""
         pass
+
+    def selectData(self, latestVisitId, visitId, includeAllVisitsInGroup=False):
+        """The user might choose another visitId."""
+        selectedVisit = latestVisitId if visitId == -1 else visitId
+        selectedVisit = -1 if selectedVisit is None else selectedVisit
+
+        return self.readData(selectedVisit, includeAllVisitsInGroup=includeAllVisitsInGroup)

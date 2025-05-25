@@ -39,7 +39,7 @@ class ShowGuiderErrorsCombined(agUtils.AgPlot):
 
         return [ax1, ax2, ax3, ax4]
 
-    def plot(self, agcData, visitId=-1,
+    def plot(self, latestVisitId, visitId=-1,
              includeAllVisitsInGroup=True,
              showAverageGuideStarPos=False,
              showAverageGuideStarPath=False,
@@ -70,7 +70,7 @@ class ShowGuiderErrorsCombined(agUtils.AgPlot):
             ID of the visit being processed (default: -1).
         All other parameters correspond to GuiderConfig settings.
         """
-        agcData = self.selectData(agcData, visitId=visitId, includeAllVisitsInGroup=includeAllVisitsInGroup)
+        agcData = self.selectData(latestVisitId, visitId=visitId, includeAllVisitsInGroup=includeAllVisitsInGroup)
 
         if not len(agcData):
             return
