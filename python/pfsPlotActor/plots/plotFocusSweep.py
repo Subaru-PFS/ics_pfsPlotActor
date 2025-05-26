@@ -35,6 +35,29 @@ class FocusSweepPlot(agUtils.AgPlot):
 
         return axs
 
+    def identify(self, keyvar, newValue):
+        """load the ag data"""
+        # if no callback just return.
+        if newValue:
+            exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
+            sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
+            [visitId, ] = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).pfs_visit_id.to_numpy()
+
+            sql = f"""select pfs_visit_id FROM visit_set INNER JOIN iic_sequence ON """ \
+                  """visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \
+                  f"""WHERE iic_sequence.sequence_type = 'agFocusSweep' and pfs_visit_id={visitId}"""
+
+            if not len(sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb)):
+                return dict(skipPlotting=True, newValue=newValue)
+
+        sql = """SELECT max(pfs_visit_id) FROM visit_set INNER JOIN iic_sequence """ \
+              """ON visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \
+              """WHERE iic_sequence.sequence_type = 'agFocusSweep'"""
+
+        lastFocusVisit = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
+
+        return dict(dataId=lastFocusVisit, newValue=newValue)
+
     def plot(self, latestFocusVisitId, visitId=-1, plotBy="focus",
              colorBy="camera",
              showPfiFocusPosition=False,
@@ -107,33 +130,3 @@ class FocusSweepPlot(agUtils.AgPlot):
                           figure=self.fig, axes=self.axes)
 
         self.fig.tight_layout()
-
-    def identify(self, keyvar, newValue):
-        """load the ag data"""
-        # if no callback just return.
-        if newValue:
-            exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
-            sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
-            [visitId, ] = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).pfs_visit_id.to_numpy()
-
-            sql = f"""select pfs_visit_id FROM visit_set INNER JOIN iic_sequence ON """ \
-                  """visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \
-                  f"""WHERE iic_sequence.sequence_type = 'agFocusSweep' and pfs_visit_id={visitId}"""
-
-            if not len(sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb)):
-                return dict(skipPlotting=True)
-
-        sql = """SELECT max(pfs_visit_id) FROM visit_set INNER JOIN iic_sequence """ \
-              """ON visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \
-              """WHERE iic_sequence.sequence_type = 'agFocusSweep'"""
-
-        lastFocusVisit = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
-
-        return dict(dataId=lastFocusVisit)
-
-    def selectVisit(self, latestFocusVisitId, visitId):
-        """The user might choose another visitId."""
-        selectedVisit = latestFocusVisitId if visitId == -1 else visitId
-        selectedVisit = -1 if selectedVisit is None else selectedVisit
-
-        return selectedVisit

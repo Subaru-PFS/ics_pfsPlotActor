@@ -58,7 +58,7 @@ class LivePlot(object):
 
     def identify(self, keyvar, newValue):
         """Identify data from keyword current value"""
-        return dict(dataId=keyvar.getValue())
+        return dict(dataId=keyvar.getValue(), newValue=newValue)
 
     def getDataIdFromKeyword(self, keyvar):
         newValue = keyvar is not None
