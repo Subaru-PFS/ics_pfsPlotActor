@@ -102,3 +102,5 @@ class ShowGuiderErrorsCombined(agUtils.AgPlot):
         guiders.showAgcErrorsForVisits(agcData, livePlot=self)
         guiders.showGuiderErrors(agcData, config=config, livePlot=self)
         self.fig.tight_layout()
+
+        return True

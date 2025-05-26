@@ -130,3 +130,5 @@ class FocusSweepPlot(agUtils.AgPlot):
                           figure=self.fig, axes=self.axes)
 
         self.fig.tight_layout()
+
+        return True

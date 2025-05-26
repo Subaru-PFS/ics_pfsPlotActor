@@ -75,3 +75,5 @@ class SpotSize(pfiUtils.ConvergencePlot):
         # label with the pfsvisit Id
         tString = f'Spot Size: pfsVisitId = {visitId:d}'
         fig.suptitle(tString)
+
+        return True

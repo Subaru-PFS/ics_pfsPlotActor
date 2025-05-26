@@ -62,3 +62,5 @@ class CcdOverscan(livePlot.LivePlot):
 
             ax2.grid()
             ax2.set_yticks([])
+
+        return True

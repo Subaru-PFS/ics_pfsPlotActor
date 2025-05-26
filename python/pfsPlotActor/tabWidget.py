@@ -148,3 +148,7 @@ class TabWidget(QTabWidget):
 
     def setAutofocus(self, state):
         self.doAutoFocus = state
+
+    def newPlotAvailable(self, tabContainer):
+        if self.doAutoFocus:
+            self.setCurrentWidget(tabContainer)

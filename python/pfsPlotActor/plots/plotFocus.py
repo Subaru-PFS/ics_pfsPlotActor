@@ -153,3 +153,5 @@ class FocusPlot(agUtils.AgPlot):
 
         self.cacheKey = cacheKey
         self.agcData = agcData
+
+        return True
