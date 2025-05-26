@@ -100,6 +100,7 @@ class TabWidget(QTabWidget):
     def __init__(self, pfsPlot):
         self.pfsPlot = pfsPlot
         self.plotBrowserDialog = plotBrowser.PlotBrowserDialog()
+        self.doAutoFocus = False
 
         QTabWidget.__init__(self)
         self.setTabsClosable(True)
@@ -144,3 +145,6 @@ class TabWidget(QTabWidget):
 
     def showError(self, title, error):
         reply = QMessageBox.critical(self, title, error, QMessageBox.Ok)
+
+    def setAutofocus(self, state):
+        self.doAutoFocus = state

@@ -29,12 +29,19 @@ class PfsPlot(QMainWindow):
 
         def setMenu():
             self.windowMenu = self.menuBar().addMenu('&Windows')
+            self.configMenu = self.menuBar().addMenu('&Configuration')
             self.helpMenu = self.menuBar().addMenu('&?')
 
         def setActions():
-            addTab = QAction('Add tab', self)
+            addTab = QAction('Add Tab', self)
             addTab.triggered.connect(self.centralWidget().newTabDialog)
             self.windowMenu.addAction(addTab)
+
+            setAutofocus = QAction('Set Autofocus', self)
+            setAutofocus.setCheckable(True)  # make it a checkbox-style toggle
+            setAutofocus.setChecked(False)  # default unchecked (optional)
+            setAutofocus.toggled.connect(self.centralWidget().setAutofocus)
+            self.configMenu.addAction(setAutofocus)
 
         # our centralWidget is actually a TabWidget.
         self.setCentralWidget(TabWidget(self))
