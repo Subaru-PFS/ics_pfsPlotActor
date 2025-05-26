@@ -3,7 +3,7 @@ __author__ = 'alefur'
 import pfsPlotActor.layout as layout
 import pfsPlotActor.plotBrowser as plotBrowser
 import pfsPlotActor.tabContainer as tabContainer
-from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtCore import Qt, QEvent, QTimer, QDateTime
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QSpinBox, QLineEdit, QLabel, QGroupBox, QMessageBox, QTabBar, \
     QTabWidget
 
@@ -100,13 +100,20 @@ class TabWidget(QTabWidget):
     def __init__(self, pfsPlot):
         self.pfsPlot = pfsPlot
         self.plotBrowserDialog = plotBrowser.PlotBrowserDialog()
-        self.doAutoFocus = False
 
         QTabWidget.__init__(self)
         self.setTabsClosable(True)
         self.setTabBar(EditableTabBar(self))
         self.tabCloseRequested.connect(self.closeTab)
-        self.currentChanged.connect(self.changeTab)
+        self.currentChanged.connect(self._userChangedTab)
+
+        # doAutoFocus tweak.
+        self.doAutoFocus = True
+        self.pendingFocusQueue = []
+        self.lastAutoFocusTime = QDateTime.currentDateTime().addSecs(-9999)
+        self.autoFocusTimer = QTimer(self)
+        self.autoFocusTimer.setSingleShot(True)
+        self.autoFocusTimer.timeout.connect(self._focusNextPendingTab)
 
     @property
     def actor(self):
@@ -134,9 +141,9 @@ class TabWidget(QTabWidget):
         if reply == QMessageBox.Yes:
             self.removeTab(index)
 
-    def changeTab(self):
+    def _userChangedTab(self):
         """Change tab callback."""
-        pass
+        self.lastAutoFocusTime = QDateTime.currentDateTime()
 
     def setEnabled(self, a0: bool) -> None:
         """Set widget and all children widgets enabled/disabled."""
@@ -150,5 +157,28 @@ class TabWidget(QTabWidget):
         self.doAutoFocus = state
 
     def newPlotAvailable(self, tabContainer):
-        if self.doAutoFocus:
+        if not self.doAutoFocus:
+            return
+
+        now = QDateTime.currentDateTime()
+        delta = self.lastAutoFocusTime.secsTo(now)
+
+        if delta > 60:
             self.setCurrentWidget(tabContainer)
+            self.lastAutoFocusTime = now
+        else:
+            if tabContainer not in self.pendingFocusQueue:
+                self.pendingFocusQueue.append(tabContainer)
+
+            if not self.autoFocusTimer.isActive():
+                self.autoFocusTimer.start((60 - delta) * 1000)  # in ms
+
+    def _focusNextPendingTab(self):
+        if self.pendingFocusQueue:
+            nextTab = self.pendingFocusQueue.pop(0)
+            self.setCurrentWidget(nextTab)
+            self.lastAutoFocusTime = QDateTime.currentDateTime()
+
+        # If more tabs are still pending, restart the timer
+        if self.pendingFocusQueue:
+            self.autoFocusTimer.start(60000)
