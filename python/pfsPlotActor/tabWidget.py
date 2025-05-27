@@ -108,6 +108,7 @@ class TabWidget(QTabWidget):
         self.currentChanged.connect(self._userChangedTab)
 
         # doAutoFocus tweak.
+        self.autoFocusGracePeriod = 60  # seconds
         self.doAutoFocus = True
         self.pendingFocusQueue = []
         self.lastAutoFocusTime = QDateTime.currentDateTime().addSecs(-9999)
@@ -163,7 +164,7 @@ class TabWidget(QTabWidget):
         now = QDateTime.currentDateTime()
         delta = self.lastAutoFocusTime.secsTo(now)
 
-        if delta > 60:
+        if delta > self.autoFocusGracePeriod:
             self.setCurrentWidget(tabContainer)
             self.lastAutoFocusTime = now
         else:
@@ -171,7 +172,7 @@ class TabWidget(QTabWidget):
                 self.pendingFocusQueue.append(tabContainer)
 
             if not self.autoFocusTimer.isActive():
-                self.autoFocusTimer.start((60 - delta) * 1000)  # in ms
+                self.autoFocusTimer.start((self.autoFocusGracePeriod - delta) * 1000)  # in ms
 
     def _focusNextPendingTab(self):
         if self.pendingFocusQueue:
@@ -181,4 +182,7 @@ class TabWidget(QTabWidget):
 
         # If more tabs are still pending, restart the timer
         if self.pendingFocusQueue:
-            self.autoFocusTimer.start(60000)
+            self.autoFocusTimer.start(self.autoFocusGracePeriod * 1000)
+
+    def setAutoFocusGracePeriod(self, seconds):
+        self.autoFocusGracePeriod = seconds

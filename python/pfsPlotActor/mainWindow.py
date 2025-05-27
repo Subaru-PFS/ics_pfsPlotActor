@@ -1,6 +1,7 @@
 __author__ = 'alefur'
 
-from PyQt5.QtWidgets import QMainWindow, QAction
+from PyQt5.QtWidgets import QMainWindow, QAction, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QSpinBox
+
 from pfsPlotActor.tabWidget import TabWidget
 
 
@@ -43,6 +44,10 @@ class PfsPlot(QMainWindow):
             setAutofocus.toggled.connect(self.centralWidget().setAutofocus)
             self.configMenu.addAction(setAutofocus)
 
+            setGrace = QAction('Set AutoFocus Grace Period…', self)
+            setGrace.triggered.connect(self.showSetGraceDialog)
+            self.configMenu.addAction(setGrace)
+
         # our centralWidget is actually a TabWidget.
         self.setCentralWidget(TabWidget(self))
         setMenu()
@@ -70,3 +75,26 @@ class PfsPlot(QMainWindow):
         self.actor.disconnectActor()
         self.reactor.callFromThread(self.reactor.stop)
         QCloseEvent.accept()
+
+    def showSetGraceDialog(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Set AutoFocus Grace Period")
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Auto-focus delay (seconds):"))
+
+        spinBox = QSpinBox()
+        spinBox.setRange(5, 600)
+        spinBox.setValue(self.centralWidget().autoFocusGracePeriod)
+        layout.addWidget(spinBox)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(buttons)
+
+        dlg.setLayout(layout)
+
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+
+        if dlg.exec_():
+            self.centralWidget().setAutoFocusGracePeriod(spinBox.value())
