@@ -143,8 +143,16 @@ class TabWidget(QTabWidget):
             self.removeTab(index)
 
     def _userChangedTab(self):
-        """Change tab callback."""
+        """Tab was changed manually — reset autofocus timer and clean pending queue."""
+        currentTab = self.currentWidget()
         self.lastAutoFocusTime = QDateTime.currentDateTime()
+
+        # Remove current tab if it was waiting in the queue
+        if currentTab in self.pendingFocusQueue:
+            self.pendingFocusQueue.remove(currentTab)
+
+        if not self.pendingFocusQueue:
+            self.autoFocusTimer.stop()
 
     def setEnabled(self, a0: bool) -> None:
         """Set widget and all children widgets enabled/disabled."""
