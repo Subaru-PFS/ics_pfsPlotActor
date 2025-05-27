@@ -59,7 +59,7 @@ class EditableTabBar(QTabBar):
     """Just an editable tab title."""
 
     def __init__(self, parent):
-        QTabBar.__init__(self, parent)
+        super().__init__(parent)
         self._editor = QLineEdit(self)
         self._editor.setWindowFlags(Qt.Popup)
         self._editor.setFocusProxy(self)
@@ -72,7 +72,7 @@ class EditableTabBar(QTabBar):
                 event.type() == QEvent.KeyPress and event.key() == Qt.Key_Escape)):
             self._editor.hide()
             return True
-        return QTabBar.eventFilter(self, widget, event)
+        return super().eventFilter(widget, event)
 
     def mouseDoubleClickEvent(self, event):
         index = self.tabAt(event.pos())
@@ -95,26 +95,31 @@ class EditableTabBar(QTabBar):
 
 
 class TabWidget(QTabWidget):
-    """Our central Widget, which handle all tabs, how they are created, edited, closed... etc"""
+    """Main tab widget managing tab layout and auto-focus logic."""
 
     def __init__(self, pfsPlot):
+        super().__init__()
         self.pfsPlot = pfsPlot
         self.plotBrowserDialog = plotBrowser.PlotBrowserDialog()
 
-        QTabWidget.__init__(self)
         self.setTabsClosable(True)
         self.setTabBar(EditableTabBar(self))
         self.tabCloseRequested.connect(self.closeTab)
         self.currentChanged.connect(self._userChangedTab)
 
+        # setting event filter tracking user activities.
+        self.installEventFilter(self)
+
         # doAutoFocus tweak.
-        self.autoFocusGracePeriod = 60  # seconds
-        self.doAutoFocus = True
+        self.autoFocusGracePeriod = 30  # seconds
+        self.doAutoFocus = False
         self.pendingFocusQueue = []
-        self.lastAutoFocusTime = QDateTime.currentDateTime().addSecs(-9999)
+        self.lastUserActivityTime = QDateTime.currentDateTime()
+
         self.autoFocusTimer = QTimer(self)
-        self.autoFocusTimer.setSingleShot(True)
-        self.autoFocusTimer.timeout.connect(self._focusNextPendingTab)
+        self.autoFocusTimer.setInterval(1000)  # check every second
+        self.autoFocusTimer.timeout.connect(self._checkAutoFocus)
+        self.autoFocusTimer.start()
 
     @property
     def actor(self):
@@ -124,8 +129,13 @@ class TabWidget(QTabWidget):
     def isConnected(self):
         return self.pfsPlot.isConnected
 
+    def eventFilter(self, obj, event):
+        if event.type() in (QEvent.MouseMove, QEvent.KeyPress, QEvent.Wheel, QEvent.MouseButtonPress):
+            self.lastUserActivityTime = QDateTime.currentDateTime()
+        return super().eventFilter(obj, event)
+
     def newTabDialog(self):
-        """Just create the dialog class."""
+        """Launch new tab creation dialog."""
         return NewTabDialog(self)
 
     def newTab(self, title, nRows, nCols):
@@ -136,61 +146,52 @@ class TabWidget(QTabWidget):
         self.setCurrentWidget(container)
 
     def closeTab(self, index):
-        """Close tab callback/"""
+        """Prompt before closing a tab."""
         reply = QMessageBox.question(self, 'Message', 'Are you sure to close this window?',
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
             self.removeTab(index)
 
     def _userChangedTab(self):
-        """Tab was changed manually — reset autofocus timer and clean pending queue."""
+        """Update last activity and remove tab from queue if needed."""
+        self.lastUserActivityTime = QDateTime.currentDateTime()
         currentTab = self.currentWidget()
-        self.lastAutoFocusTime = QDateTime.currentDateTime()
-
-        # Remove current tab if it was waiting in the queue
         if currentTab in self.pendingFocusQueue:
             self.pendingFocusQueue.remove(currentTab)
 
-        if not self.pendingFocusQueue:
-            self.autoFocusTimer.stop()
-
     def setEnabled(self, a0: bool) -> None:
-        """Set widget and all children widgets enabled/disabled."""
+        """Set all tabs enabled/disabled."""
         for index in range(self.count()):
             self.widget(index).setEnabled(a0)
 
     def showError(self, title, error):
-        reply = QMessageBox.critical(self, title, error, QMessageBox.Ok)
+        """Show an error dialog."""
+        QMessageBox.critical(self, title, error, QMessageBox.Ok)
 
-    def setAutofocus(self, state):
+    def setAutofocus(self, state: bool):
+        """Enable or disable auto-focus."""
         self.doAutoFocus = state
 
+    def setAutoFocusGracePeriod(self, seconds: int):
+        """Set the idle threshold for auto-focus in seconds."""
+        self.autoFocusGracePeriod = seconds
+
     def newPlotAvailable(self, tabContainer):
+        """Called when a new plot is available in a tab."""
         if not self.doAutoFocus:
             return
 
-        now = QDateTime.currentDateTime()
-        delta = self.lastAutoFocusTime.secsTo(now)
+        if tabContainer not in self.pendingFocusQueue:
+            self.pendingFocusQueue.append(tabContainer)
 
-        if delta > self.autoFocusGracePeriod:
-            self.setCurrentWidget(tabContainer)
-            self.lastAutoFocusTime = now
-        else:
-            if tabContainer not in self.pendingFocusQueue:
-                self.pendingFocusQueue.append(tabContainer)
+    def _checkAutoFocus(self):
+        """Check if the user has been idle long enough to focus next tab."""
+        if not self.doAutoFocus or not self.pendingFocusQueue:
+            return
 
-            if not self.autoFocusTimer.isActive():
-                self.autoFocusTimer.start((self.autoFocusGracePeriod - delta) * 1000)  # in ms
+        idleSecs = self.lastUserActivityTime.secsTo(QDateTime.currentDateTime())
 
-    def _focusNextPendingTab(self):
-        if self.pendingFocusQueue:
+        if idleSecs >= self.autoFocusGracePeriod:
             nextTab = self.pendingFocusQueue.pop(0)
             self.setCurrentWidget(nextTab)
-            self.lastAutoFocusTime = QDateTime.currentDateTime()
-
-        # If more tabs are still pending, restart the timer
-        if self.pendingFocusQueue:
-            self.autoFocusTimer.start(self.autoFocusGracePeriod * 1000)
-
-    def setAutoFocusGracePeriod(self, seconds):
-        self.autoFocusGracePeriod = seconds
+            self.lastUserActivityTime = QDateTime.currentDateTime()
