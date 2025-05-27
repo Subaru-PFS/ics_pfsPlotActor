@@ -1,7 +1,7 @@
 from importlib import reload
 
-import pfsPlotActor.utils.ag as agUtils
 import pfs.drp.stella.utils.guiders as guiders
+import pfsPlotActor.utils.ag as agUtils
 
 reload(agUtils)
 
@@ -21,13 +21,13 @@ class showAgcErrorsForVisits(agUtils.AgPlot):
     axes : list of matplotlib.axes.Axes
         List of axes used for plotting.
     """
+
     def initialize(self):
         """Initialize your axes"""
         ax1 = self.fig.add_subplot(311)
         ax2 = self.fig.add_subplot(312, sharex=ax1)
         ax3 = self.fig.add_subplot(313, sharex=ax1)
         return [ax1, ax2, ax3]
-
 
     def plot(self, latestVisitId, visitId=-1, includeAllVisitsInGroup=True):
         """
@@ -48,3 +48,5 @@ class showAgcErrorsForVisits(agUtils.AgPlot):
 
         # Call the plotting routine
         guiders.showAgcErrorsForVisits(agcData, livePlot=self)
+
+        return True

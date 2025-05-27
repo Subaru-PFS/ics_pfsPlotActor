@@ -3,6 +3,7 @@ from importlib import reload
 import numpy as np
 import pfsPlotActor.utils.pfi as pfiUtils
 from pfsPlotActor.utils.sgfm import calibModel
+
 reload(pfiUtils)
 
 
@@ -68,3 +69,5 @@ class ConvergenceMap(pfiUtils.ConvergencePlot):
 
         ax.set_aspect('equal')
         ax.format_coord = self.cobraIdFiberIdFormatter
+
+        return True

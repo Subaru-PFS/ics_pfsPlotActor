@@ -138,3 +138,5 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
             label.set_color(color)
 
         fig.tight_layout()
+
+        return True

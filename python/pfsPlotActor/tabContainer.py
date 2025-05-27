@@ -24,7 +24,7 @@ class TabContainer(QWidget):
         """Set new plot widget in-place of the plotBrowserButton."""
         # creating the object with a canvas.
         w1 = mplCanvas.MplWidget()
-        obj = classType(w1.canvas)
+        obj = classType(self, w1.canvas)
         # add dedicated widgets to tweak the plots.
         w1.addTweakingWidgets(obj)
 

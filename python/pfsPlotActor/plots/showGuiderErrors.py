@@ -83,3 +83,5 @@ class ShowGuiderErrors(agUtils.AgPlot):
 
         # Call the plotting routine
         guiders.showGuiderErrors(agcData, config=config, livePlot=self)
+
+        return True

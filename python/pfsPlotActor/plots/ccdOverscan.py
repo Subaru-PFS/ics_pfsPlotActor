@@ -24,7 +24,7 @@ class CcdOverscan(livePlot.LivePlot):
         [root, night, fname] = keyvar.getValue()
         args = [root, night, 'sps', fname]
         filepath = os.path.join(*args)
-        return dict(dataId=filepath)
+        return dict(dataId=filepath, newValue=newValue)
 
     def plot(self, filepath, nSigma=5):
         """Plot the latest dataset."""
@@ -62,3 +62,5 @@ class CcdOverscan(livePlot.LivePlot):
 
             ax2.grid()
             ax2.set_yticks([])
+
+        return True

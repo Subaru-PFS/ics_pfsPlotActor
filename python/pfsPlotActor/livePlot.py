@@ -21,7 +21,8 @@ class LivePlot(object):
     noCallback = False
     units = dict()
 
-    def __init__(self, canvas):
+    def __init__(self, tabContainer, canvas):
+        self.tabContainer = tabContainer
         self.canvas = canvas
 
         axes = self.initialize()
@@ -58,7 +59,7 @@ class LivePlot(object):
 
     def identify(self, keyvar, newValue):
         """Identify data from keyword current value"""
-        return dict(dataId=keyvar.getValue())
+        return dict(dataId=keyvar.getValue(), newValue=newValue)
 
     def getDataIdFromKeyword(self, keyvar):
         newValue = keyvar is not None
@@ -84,17 +85,22 @@ class LivePlot(object):
 
         dataId = dataIdFromKeyword.get('dataId')
         skipPlotting = dataIdFromKeyword.get('skipPlotting', False)
+        newValue = dataIdFromKeyword.get('newValue', False)
 
         if skipPlotting or (dataId is None and not self.noCallback):
             return
 
         self.clear()
         try:
-            self.plot(dataId, **self.tweakDict)
+            plotted = self.plot(dataId, **self.tweakDict)
         except Exception as e:
             logging.warning(e)
+            return
 
         self.canvas.draw()
+
+        if newValue and plotted:
+            self.tabContainer.tabWidget.newPlotAvailable(self.tabContainer)
 
     def plot(self, dataFromKeyword, **kwargs):
         """Plot prototype."""

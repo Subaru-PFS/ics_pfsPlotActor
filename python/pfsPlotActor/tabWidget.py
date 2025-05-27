@@ -3,7 +3,7 @@ __author__ = 'alefur'
 import pfsPlotActor.layout as layout
 import pfsPlotActor.plotBrowser as plotBrowser
 import pfsPlotActor.tabContainer as tabContainer
-from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtCore import Qt, QEvent, QTimer, QDateTime
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QSpinBox, QLineEdit, QLabel, QGroupBox, QMessageBox, QTabBar, \
     QTabWidget
 
@@ -105,7 +105,16 @@ class TabWidget(QTabWidget):
         self.setTabsClosable(True)
         self.setTabBar(EditableTabBar(self))
         self.tabCloseRequested.connect(self.closeTab)
-        self.currentChanged.connect(self.changeTab)
+        self.currentChanged.connect(self._userChangedTab)
+
+        # doAutoFocus tweak.
+        self.autoFocusGracePeriod = 60  # seconds
+        self.doAutoFocus = True
+        self.pendingFocusQueue = []
+        self.lastAutoFocusTime = QDateTime.currentDateTime().addSecs(-9999)
+        self.autoFocusTimer = QTimer(self)
+        self.autoFocusTimer.setSingleShot(True)
+        self.autoFocusTimer.timeout.connect(self._focusNextPendingTab)
 
     @property
     def actor(self):
@@ -133,9 +142,17 @@ class TabWidget(QTabWidget):
         if reply == QMessageBox.Yes:
             self.removeTab(index)
 
-    def changeTab(self):
-        """Change tab callback."""
-        pass
+    def _userChangedTab(self):
+        """Tab was changed manually — reset autofocus timer and clean pending queue."""
+        currentTab = self.currentWidget()
+        self.lastAutoFocusTime = QDateTime.currentDateTime()
+
+        # Remove current tab if it was waiting in the queue
+        if currentTab in self.pendingFocusQueue:
+            self.pendingFocusQueue.remove(currentTab)
+
+        if not self.pendingFocusQueue:
+            self.autoFocusTimer.stop()
 
     def setEnabled(self, a0: bool) -> None:
         """Set widget and all children widgets enabled/disabled."""
@@ -144,3 +161,36 @@ class TabWidget(QTabWidget):
 
     def showError(self, title, error):
         reply = QMessageBox.critical(self, title, error, QMessageBox.Ok)
+
+    def setAutofocus(self, state):
+        self.doAutoFocus = state
+
+    def newPlotAvailable(self, tabContainer):
+        if not self.doAutoFocus:
+            return
+
+        now = QDateTime.currentDateTime()
+        delta = self.lastAutoFocusTime.secsTo(now)
+
+        if delta > self.autoFocusGracePeriod:
+            self.setCurrentWidget(tabContainer)
+            self.lastAutoFocusTime = now
+        else:
+            if tabContainer not in self.pendingFocusQueue:
+                self.pendingFocusQueue.append(tabContainer)
+
+            if not self.autoFocusTimer.isActive():
+                self.autoFocusTimer.start((self.autoFocusGracePeriod - delta) * 1000)  # in ms
+
+    def _focusNextPendingTab(self):
+        if self.pendingFocusQueue:
+            nextTab = self.pendingFocusQueue.pop(0)
+            self.setCurrentWidget(nextTab)
+            self.lastAutoFocusTime = QDateTime.currentDateTime()
+
+        # If more tabs are still pending, restart the timer
+        if self.pendingFocusQueue:
+            self.autoFocusTimer.start(self.autoFocusGracePeriod * 1000)
+
+    def setAutoFocusGracePeriod(self, seconds):
+        self.autoFocusGracePeriod = seconds

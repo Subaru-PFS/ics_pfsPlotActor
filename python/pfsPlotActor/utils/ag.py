@@ -50,7 +50,7 @@ class AgPlot(livePlot.LivePlot):
         sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
         [visitId, ] = sysUtils.pd_read_sql(sql, AgPlot.opdb).pfs_visit_id.to_numpy()
 
-        return dict(dataId=visitId)
+        return dict(dataId=visitId, newValue=newValue)
 
     def plot(self, agcData, *args, **kwargs):
         """Plot the latest dataset."""
@@ -62,3 +62,10 @@ class AgPlot(livePlot.LivePlot):
         selectedVisit = -1 if selectedVisit is None else selectedVisit
 
         return self.readData(selectedVisit, includeAllVisitsInGroup=includeAllVisitsInGroup)
+
+    def selectVisit(self, latestVisit, visitId):
+        """The user might choose another visitId."""
+        selectedVisit = latestVisit if visitId == -1 else visitId
+        selectedVisit = -1 if selectedVisit is None else selectedVisit
+
+        return selectedVisit

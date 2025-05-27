@@ -1,6 +1,7 @@
 __author__ = 'alefur'
 
-from PyQt5.QtWidgets import QMainWindow, QAction
+from PyQt5.QtWidgets import QMainWindow, QAction, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QSpinBox
+
 from pfsPlotActor.tabWidget import TabWidget
 
 
@@ -29,12 +30,23 @@ class PfsPlot(QMainWindow):
 
         def setMenu():
             self.windowMenu = self.menuBar().addMenu('&Windows')
+            self.configMenu = self.menuBar().addMenu('&Configuration')
             self.helpMenu = self.menuBar().addMenu('&?')
 
         def setActions():
-            addTab = QAction('Add tab', self)
+            addTab = QAction('Add Tab', self)
             addTab.triggered.connect(self.centralWidget().newTabDialog)
             self.windowMenu.addAction(addTab)
+
+            setAutofocus = QAction('Set Autofocus', self)
+            setAutofocus.setCheckable(True)  # make it a checkbox-style toggle
+            setAutofocus.setChecked(False)  # default unchecked (optional)
+            setAutofocus.toggled.connect(self.centralWidget().setAutofocus)
+            self.configMenu.addAction(setAutofocus)
+
+            setGrace = QAction('Set AutoFocus Grace Period…', self)
+            setGrace.triggered.connect(self.showSetGraceDialog)
+            self.configMenu.addAction(setGrace)
 
         # our centralWidget is actually a TabWidget.
         self.setCentralWidget(TabWidget(self))
@@ -63,3 +75,26 @@ class PfsPlot(QMainWindow):
         self.actor.disconnectActor()
         self.reactor.callFromThread(self.reactor.stop)
         QCloseEvent.accept()
+
+    def showSetGraceDialog(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Set AutoFocus Grace Period")
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Auto-focus delay (seconds):"))
+
+        spinBox = QSpinBox()
+        spinBox.setRange(5, 600)
+        spinBox.setValue(self.centralWidget().autoFocusGracePeriod)
+        layout.addWidget(spinBox)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(buttons)
+
+        dlg.setLayout(layout)
+
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+
+        if dlg.exec_():
+            self.centralWidget().setAutoFocusGracePeriod(spinBox.value())

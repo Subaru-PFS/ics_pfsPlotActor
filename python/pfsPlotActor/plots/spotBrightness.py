@@ -2,6 +2,7 @@ from importlib import reload
 
 import pfsPlotActor.utils.pfi as pfiUtils
 from pfsPlotActor.utils.sgfm import calibModel
+
 reload(pfiUtils)
 
 
@@ -46,3 +47,5 @@ class SpotBrightness(pfiUtils.ConvergencePlot):
         ax.set_ylabel("Y (mm)")
         ax.set_aspect('equal')
         ax.format_coord = self.cobraIdFiberIdFormatter
+
+        return True

@@ -75,7 +75,7 @@ class ConvergencePlot(livePlot.LivePlot):
     def identify(self, keyvar, newValue):
         """identify visit from keyvar"""
         designId, visit, status = keyvar.getValue()
-        return dict(dataId=visit)
+        return dict(dataId=visit, newValue=newValue)
 
     def plot(self, latestVisitId, *args, **kwargs):
         """Plot the latest dataset."""

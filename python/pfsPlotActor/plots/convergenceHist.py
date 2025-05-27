@@ -42,3 +42,5 @@ class ConvergenceHist(pfiUtils.ConvergencePlot):
         ax.set_ylabel("N")
         ax.set_aspect('auto')
         ax.grid()
+
+        return True

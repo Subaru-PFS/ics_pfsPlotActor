@@ -42,6 +42,17 @@ class FocusPlot(agUtils.AgPlot):
 
         return axs
 
+    def identify(self, keyvar, newValue):
+        """load the ag data"""
+        visitId, camList, camMask = keyvar.getValue()
+        sql = f'select exp_type from sps_visit where pfs_visit_id={visitId}'
+        exptype = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
+
+        if exptype != 'object':
+            return dict(skipPlotting=True, newValue=newValue)
+
+        return dict(dataId=visitId, newValue=newValue)
+
     def getCacheKey(self, params: dict) -> str:
         """
         Generate a stable cache key based on relevant parameters.
@@ -143,20 +154,4 @@ class FocusPlot(agUtils.AgPlot):
         self.cacheKey = cacheKey
         self.agcData = agcData
 
-    def selectVisit(self, latestVisit, visitId):
-        """The user might choose another visitId."""
-        selectedVisit = latestVisit if visitId == -1 else visitId
-        selectedVisit = -1 if selectedVisit is None else selectedVisit
-
-        return selectedVisit
-
-    def identify(self, keyvar, newValue):
-        """load the ag data"""
-        visitId, camList, camMask = keyvar.getValue()
-        sql = f'select exp_type from sps_visit where pfs_visit_id={visitId}'
-        exptype = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
-
-        if exptype != 'object':
-            return dict(skipPlotting=True)
-
-        return dict(dataId=visitId)
+        return True

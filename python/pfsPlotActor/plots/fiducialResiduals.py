@@ -31,6 +31,85 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
         ax2 = self.fig.add_subplot(122)  # Histogram of RMS
         return [ax1, ax2]
 
+    def getPerFiducialRMS(self, fidsData):
+        """
+        Calculate RMS and displacement for fiducials.
+
+        Parameters
+        ----------
+        fidsData : DataFrame
+            Fiducial data.
+
+        Returns
+        -------
+        DataFrame
+            Fiducial RMS, displacement, and metadata.
+        """
+        fidsData['dx'] = np.zeros(len(fidsData), dtype=float)
+        fidsData['dy'] = np.zeros(len(fidsData), dtype=float)
+        fidsData['FIDUCIALS_OK'] = False
+
+        # Calculate displacements
+        for iteration, dfi in fidsData.groupby('iteration'):
+            dfi = dfi.sort_values('fiducial_fiber_id')
+            index = dfi.fiducial_fiber_id.to_numpy() - 1
+
+            fidsData.loc[dfi.index, 'dx'] = fiducials.x_mm.to_numpy()[index] - dfi.pfi_center_x_mm.to_numpy()
+            fidsData.loc[dfi.index, 'dy'] = fiducials.y_mm.to_numpy()[index] - dfi.pfi_center_y_mm.to_numpy()
+            fidsData.loc[dfi.index, 'FIDUCIALS_OK'] = fiducials.FIDUCIALS_OK.to_numpy()[index]
+
+        fidsData['dist'] = np.hypot(fidsData.dx.to_numpy(), fidsData.dy.to_numpy())
+
+        rmsVal = pd.DataFrame([(fid, 1000 * np.std(dfi.dist, ddof=1), 1000 * np.mean(dfi.dx), 1000 * np.mean(dfi.dy),
+                                1000 * np.mean(dfi.dist)) for fid, dfi in fidsData.groupby('fiducial_fiber_id')],
+                              columns=['fiducialId', 'rms', 'dx', 'dy', 'dist'])
+
+        return pd.merge(rmsVal, fiducials, on='fiducialId', how='inner')
+
+    def getPerBrokenCobraRMS(self, convergeData):
+        """
+        Calculate RMS and displacement for broken cobras.
+
+        Parameters
+        ----------
+        convergeData : DataFrame
+            Convergence data.
+
+        Returns
+        -------
+        DataFrame
+            Broken cobra RMS, displacement, and metadata.
+        """
+        brokenMask = sgfm[~sgfm.FIBER_BROKEN_MASK & ~sgfm.COBRA_OK_MASK].cobraId
+        brokenCobras = convergeData[convergeData.cobra_id.isin(brokenMask)].copy()
+
+        # Ensure dx/dy columns exist with float dtype
+        brokenCobras['dx'] = 0.0
+        brokenCobras['dy'] = 0.0
+
+        # Calculate displacements
+        for iteration, dfi in brokenCobras.groupby('iteration'):
+            cobraIndices = dfi.cobra_id.to_numpy() - 1
+            xDiff = sgfm.x.to_numpy()[cobraIndices] - dfi.pfi_center_x_mm.to_numpy()
+            yDiff = sgfm.y.to_numpy()[cobraIndices] - dfi.pfi_center_y_mm.to_numpy()
+
+            brokenCobras.loc[dfi.index, 'dx'] = xDiff
+            brokenCobras.loc[dfi.index, 'dy'] = yDiff
+
+        brokenCobras['dist'] = np.hypot(brokenCobras['dx'], brokenCobras['dy'])
+
+        rmsVal = pd.DataFrame(
+            [(cobraId,
+              1000 * np.std(dfi.dist, ddof=1),
+              1000 * np.mean(dfi.dx),
+              1000 * np.mean(dfi.dy),
+              1000 * np.mean(dfi.dist))
+             for cobraId, dfi in brokenCobras.groupby('cobra_id')],
+            columns=['cobraId', 'rms', 'dx', 'dy', 'dist']
+        )
+
+        return pd.merge(rmsVal, sgfm[['cobraId', 'fiberId', 'x', 'y']], on='cobraId', how='inner')
+
     def plot(self, latestVisitId, visitId=-1, vmin=0, vmax=15, addBrokenCobras=False,
              showDisplacementAsArrow=False, bins=20, arrowSize='auto'):
         """
@@ -143,81 +222,4 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
 
         fig.tight_layout()
 
-    def getPerFiducialRMS(self, fidsData):
-        """
-        Calculate RMS and displacement for fiducials.
-
-        Parameters
-        ----------
-        fidsData : DataFrame
-            Fiducial data.
-
-        Returns
-        -------
-        DataFrame
-            Fiducial RMS, displacement, and metadata.
-        """
-        fidsData['dx'] = np.zeros(len(fidsData), dtype=float)
-        fidsData['dy'] = np.zeros(len(fidsData), dtype=float)
-        fidsData['FIDUCIALS_OK'] = False
-
-        # Calculate displacements
-        for iteration, dfi in fidsData.groupby('iteration'):
-            dfi = dfi.sort_values('fiducial_fiber_id')
-            index = dfi.fiducial_fiber_id.to_numpy() - 1
-
-            fidsData.loc[dfi.index, 'dx'] = fiducials.x_mm.to_numpy()[index] - dfi.pfi_center_x_mm.to_numpy()
-            fidsData.loc[dfi.index, 'dy'] = fiducials.y_mm.to_numpy()[index] - dfi.pfi_center_y_mm.to_numpy()
-            fidsData.loc[dfi.index, 'FIDUCIALS_OK'] = fiducials.FIDUCIALS_OK.to_numpy()[index]
-
-        fidsData['dist'] = np.hypot(fidsData.dx.to_numpy(), fidsData.dy.to_numpy())
-
-        rmsVal = pd.DataFrame([(fid, 1000 * np.std(dfi.dist, ddof=1), 1000 * np.mean(dfi.dx), 1000 * np.mean(dfi.dy),
-                                1000 * np.mean(dfi.dist)) for fid, dfi in fidsData.groupby('fiducial_fiber_id')],
-                              columns=['fiducialId', 'rms', 'dx', 'dy', 'dist'])
-
-        return pd.merge(rmsVal, fiducials, on='fiducialId', how='inner')
-
-    def getPerBrokenCobraRMS(self, convergeData):
-        """
-        Calculate RMS and displacement for broken cobras.
-
-        Parameters
-        ----------
-        convergeData : DataFrame
-            Convergence data.
-
-        Returns
-        -------
-        DataFrame
-            Broken cobra RMS, displacement, and metadata.
-        """
-        brokenMask = sgfm[~sgfm.FIBER_BROKEN_MASK & ~sgfm.COBRA_OK_MASK].cobraId
-        brokenCobras = convergeData[convergeData.cobra_id.isin(brokenMask)].copy()
-
-        # Ensure dx/dy columns exist with float dtype
-        brokenCobras['dx'] = 0.0
-        brokenCobras['dy'] = 0.0
-
-        # Calculate displacements
-        for iteration, dfi in brokenCobras.groupby('iteration'):
-            cobraIndices = dfi.cobra_id.to_numpy() - 1
-            xDiff = sgfm.x.to_numpy()[cobraIndices] - dfi.pfi_center_x_mm.to_numpy()
-            yDiff = sgfm.y.to_numpy()[cobraIndices] - dfi.pfi_center_y_mm.to_numpy()
-
-            brokenCobras.loc[dfi.index, 'dx'] = xDiff
-            brokenCobras.loc[dfi.index, 'dy'] = yDiff
-
-        brokenCobras['dist'] = np.hypot(brokenCobras['dx'], brokenCobras['dy'])
-
-        rmsVal = pd.DataFrame(
-            [(cobraId,
-              1000 * np.std(dfi.dist, ddof=1),
-              1000 * np.mean(dfi.dx),
-              1000 * np.mean(dfi.dy),
-              1000 * np.mean(dfi.dist))
-             for cobraId, dfi in brokenCobras.groupby('cobra_id')],
-            columns=['cobraId', 'rms', 'dx', 'dy', 'dist']
-        )
-
-        return pd.merge(rmsVal, sgfm[['cobraId', 'fiberId', 'x', 'y']], on='cobraId', how='inner')
+        return True

@@ -3,8 +3,8 @@ from importlib import reload
 import matplotlib.pyplot as plt
 import numpy as np
 import pfsPlotActor.utils.pfi as pfiUtils
-from pfsPlotActor.utils.sgfm import calibModel, dots, fiducials
 from matplotlib.colors import to_hex
+from pfsPlotActor.utils.sgfm import calibModel, dots, fiducials
 
 reload(pfiUtils)
 
@@ -14,59 +14,6 @@ class SequencePlot(pfiUtils.ConvergencePlot):
     def cobraIndices(self, cobraNum):
         indices = self.goodIdx if cobraNum is None else [cobraNum - 1]
         return indices
-
-    def plot(self, latestVisitId, visitId=-1, cobraNum='all', minIter=3, centrePos=True, hardStop=False, blackDots=True,
-             badCobras=False, patrolRegion=True, ff=True, showDesign=True):
-        """Plot the latest dataset."""
-        fig = self.fig
-        ax = self.axes[0]
-
-        # Get convergence dataframe default is latest.
-        convergeData = self.selectData(latestVisitId, visitId=visitId)
-        if not len(convergeData):
-            return
-
-        convergeData = convergeData.query(f'iteration>={minIter}')
-
-        if not badCobras:
-            convergeData = convergeData[convergeData.cobra_id.isin(self.goodIdx + 1)]
-
-        [visitId] = convergeData.pfs_visit_id.unique()
-        nIter = convergeData.iteration.max()
-        cobraNum = None if cobraNum == 'all' else int(cobraNum)
-
-        # sequential colourmap for plots
-        cmap = plt.get_cmap('cool')
-        cmap = cmap(np.linspace(1.0, 0, len(convergeData.iteration.unique())))
-        colors = [to_hex(col) for col in cmap]
-
-        # plot spots for each iteration in a given colour
-        for i, (iterVal, cD) in enumerate(convergeData.groupby('iteration')):
-            xM = cD['pfi_center_x_mm'].values
-            yM = cD['pfi_center_y_mm'].values
-            sc = ax.scatter(xM, yM, c=colors[i], marker='o', s=10)
-
-        ax.set_aspect('equal')
-        ax.set_xlabel("X (mm)")
-        ax.set_ylabel("Y (mm)")
-
-        tString = f'Cobra Motion: pfsVisitId = {visitId:d}'
-        ax.set_title(tString)
-        ax.format_coord = self.cobraIdFiberIdFormatter
-
-        # various optional overlays
-        if centrePos:
-            self.overlayCentres(ax, cobraNum=cobraNum)
-        if hardStop:
-            self.overlayHardStop(ax, cobraNum=cobraNum)
-        if blackDots:
-            self.overlayBlackDots(ax, cobraNum=cobraNum)
-        if patrolRegion:
-            self.overlayPatrolRegion(ax, cobraNum=cobraNum)
-        if ff:
-            self.overlayFF(ax)
-        if showDesign:
-            self.overlayDesign(ax, visitId)
 
     def overlayFF(self, ax):
         """Overlay positions of fiducial fibres."""
@@ -140,3 +87,58 @@ class SequencePlot(pfiUtils.ConvergencePlot):
 
         for i in range(len(centers)):
             ax.plot([centers.real[i], centers.real[i] + x[i]], [centers.imag[i], centers.imag[i] + y[i]], **kwargs)
+
+    def plot(self, latestVisitId, visitId=-1, cobraNum='all', minIter=3, centrePos=True, hardStop=False, blackDots=True,
+             badCobras=False, patrolRegion=True, ff=True, showDesign=True):
+        """Plot the latest dataset."""
+        fig = self.fig
+        ax = self.axes[0]
+
+        # Get convergence dataframe default is latest.
+        convergeData = self.selectData(latestVisitId, visitId=visitId)
+        if not len(convergeData):
+            return
+
+        convergeData = convergeData.query(f'iteration>={minIter}')
+
+        if not badCobras:
+            convergeData = convergeData[convergeData.cobra_id.isin(self.goodIdx + 1)]
+
+        [visitId] = convergeData.pfs_visit_id.unique()
+        nIter = convergeData.iteration.max()
+        cobraNum = None if cobraNum == 'all' else int(cobraNum)
+
+        # sequential colourmap for plots
+        cmap = plt.get_cmap('cool')
+        cmap = cmap(np.linspace(1.0, 0, len(convergeData.iteration.unique())))
+        colors = [to_hex(col) for col in cmap]
+
+        # plot spots for each iteration in a given colour
+        for i, (iterVal, cD) in enumerate(convergeData.groupby('iteration')):
+            xM = cD['pfi_center_x_mm'].values
+            yM = cD['pfi_center_y_mm'].values
+            sc = ax.scatter(xM, yM, c=colors[i], marker='o', s=10)
+
+        ax.set_aspect('equal')
+        ax.set_xlabel("X (mm)")
+        ax.set_ylabel("Y (mm)")
+
+        tString = f'Cobra Motion: pfsVisitId = {visitId:d}'
+        ax.set_title(tString)
+        ax.format_coord = self.cobraIdFiberIdFormatter
+
+        # various optional overlays
+        if centrePos:
+            self.overlayCentres(ax, cobraNum=cobraNum)
+        if hardStop:
+            self.overlayHardStop(ax, cobraNum=cobraNum)
+        if blackDots:
+            self.overlayBlackDots(ax, cobraNum=cobraNum)
+        if patrolRegion:
+            self.overlayPatrolRegion(ax, cobraNum=cobraNum)
+        if ff:
+            self.overlayFF(ax)
+        if showDesign:
+            self.overlayDesign(ax, visitId)
+
+        return True
