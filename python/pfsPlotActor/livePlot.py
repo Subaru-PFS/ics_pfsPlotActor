@@ -3,16 +3,19 @@ from collections.abc import Iterable
 
 import matplotlib as mpl
 import psycopg2
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication
 
 mpl.rcParams.update({
-    'font.size': 12,              # Default font size for everything
-    'axes.titlesize': 14,         # Title of each subplot
-    'axes.labelsize': 12,         # x and y labels
-    'xtick.labelsize': 10,        # x-axis tick labels
-    'ytick.labelsize': 10,        # y-axis tick labels
-    'legend.fontsize': 11,        # Legend text
-    'figure.titlesize': 16        # suptitle size
+    'font.size': 12,  # Default font size for everything
+    'axes.titlesize': 14,  # Title of each subplot
+    'axes.labelsize': 12,  # x and y labels
+    'xtick.labelsize': 10,  # x-axis tick labels
+    'ytick.labelsize': 10,  # y-axis tick labels
+    'legend.fontsize': 11,  # Legend text
+    'figure.titlesize': 16  # suptitle size
 })
+
 
 class LivePlot(object):
     # actor and key that to attach the callback to.
@@ -90,12 +93,15 @@ class LivePlot(object):
         if skipPlotting or (dataId is None and not self.noCallback):
             return
 
+        QApplication.setOverrideCursor(Qt.WaitCursor)  # ⏳ show busy cursor
         self.clear()
         try:
             plotted = self.plot(dataId, **self.tweakDict)
         except Exception as e:
             logging.warning(e)
             return
+        finally:
+            QApplication.restoreOverrideCursor()  # reset cursor no matter what
 
         self.canvas.draw()
 
