@@ -51,6 +51,15 @@ def main():
 
     try:
         ex = mainWindow.PfsPlot(reactor, actor, args.name, screen)
+
+        # resizing to sensible resolution.
+        ex.resize(1024, 768)
+
+        # Center the window on the screen
+        qr = ex.frameGeometry()
+        cp = app.desktop().availableGeometry().center()
+        qr.moveCenter(cp)
+        ex.move(qr.topLeft())
     except:
         actor.disconnectActor()
         raise
