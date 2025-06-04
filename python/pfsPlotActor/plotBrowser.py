@@ -47,6 +47,8 @@ class PlotBrowserDialog(QDialog):
         self.plotTable = plotTable.PlotTable(self, self.inspectPlotDefinition())
         self.layout().addWidget(self.plotTable)
 
+        self.resize(self.plotTable.actualWidth+20, self.height())
+
     def inspectPlotDefinition(self):
         """Inspect pfsPlotActor.plots and look for livePlot subclasses."""
         reload(plots)
