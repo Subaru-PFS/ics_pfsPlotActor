@@ -32,7 +32,22 @@ def main():
     from twisted.internet import reactor
 
     import miniActor
-    actor = miniActor.connectActor(['hub'])
+
+    specNums = [i + 1 for i in range(4)]
+
+    viscamNames = [f'b{specNum}' for specNum in specNums] + [f'r{specNum}' for specNum in specNums]
+    nircamNames = [f'n{specNum}' for specNum in specNums]
+
+    xcus = [f'xcu_{cam}' for cam in viscamNames + nircamNames]
+    ccds = [f'ccd_{cam}' for cam in viscamNames]
+    hxs = [f'hx_{cam}' for cam in nircamNames]
+    enus = [f'enu_sm{specNum}' for specNum in specNums]
+
+    sps = ['sps'] + enus + xcus + ccds + hxs
+    pfi = ['mcs', 'fps', 'ag', 'agcc']
+
+    listenActors = ['hub'] + sps + pfi
+    actor = miniActor.connectActor(listenActors)
 
     try:
         ex = mainWindow.PfsPlot(reactor, actor, args.name, screen)
