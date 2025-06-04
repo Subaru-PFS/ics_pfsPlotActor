@@ -36,8 +36,10 @@ class MplWidget(QWidget):
 
     maxNumCols = 10  # Maximum number of columns in the tweak widgets grid
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, **plotKwargs):
+        self.plotKwargs = plotKwargs
+
+        super().__init__(*args)
 
         # Initialize the main plotting canvas and toolbar
         self.canvas = MplCanvas()
