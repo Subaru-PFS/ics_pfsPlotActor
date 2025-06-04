@@ -25,6 +25,8 @@ class TabContainer(QWidget):
         # creating the object with a canvas.
         w1 = mplCanvas.MplWidget()
         obj = classType(self, w1.canvas)
+        # connecting event
+        w1.canvas.mpl_connect('motion_notify_event', self.tabWidget.on_mouse_move)
         # add dedicated widgets to tweak the plots.
         w1.addTweakingWidgets(obj)
 

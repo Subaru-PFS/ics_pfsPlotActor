@@ -3,9 +3,9 @@ __author__ = 'alefur'
 import pfsPlotActor.layout as layout
 import pfsPlotActor.misc as misc
 import pfsPlotActor.plotBrowser as plotBrowser
-from PyQt5.QtGui import QPixmap, QIcon
 import pfsPlotActor.tabContainer as tabContainer
 from PyQt5.QtCore import Qt, QEvent, QTimer, QDateTime
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QSpinBox, QLineEdit, QLabel, QGroupBox, QMessageBox, QTabBar, \
     QTabWidget
 
@@ -107,7 +107,7 @@ class TabWidget(QTabWidget):
         self.setTabsClosable(True)
         self.setTabBar(EditableTabBar(self))
         self.tabCloseRequested.connect(self.closeTab)
-        self.currentChanged.connect(self._userChangedTab)
+        self.currentChanged.connect(self._currentTabChanged)
 
         # setting event filter tracking user activities.
         self.installEventFilter(self)
@@ -125,6 +125,8 @@ class TabWidget(QTabWidget):
         self.autoFocusTimer.timeout.connect(self._checkAutoFocus)
         self.autoFocusTimer.start()
 
+        self.setMouseTracking(True)
+
     @property
     def actor(self):
         return self.pfsPlot.actor
@@ -133,9 +135,14 @@ class TabWidget(QTabWidget):
     def isConnected(self):
         return self.pfsPlot.isConnected
 
+    def on_mouse_move(self, *args, **kwargs):
+        """Update last user activity time when mouse moves."""
+        self.lastUserActivityTime = QDateTime.currentDateTime()
+
     def eventFilter(self, obj, event):
+        """Filter events to detect user activity events and update the activity time."""
         if event.type() in (QEvent.MouseMove, QEvent.KeyPress, QEvent.Wheel, QEvent.MouseButtonPress):
-            self.lastUserActivityTime = QDateTime.currentDateTime()
+            self.on_mouse_move()
         return super().eventFilter(obj, event)
 
     def newTabDialog(self):
@@ -155,19 +162,6 @@ class TabWidget(QTabWidget):
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
             self.removeTab(index)
-
-    def _userChangedTab(self):
-        """Update last activity and remove tab from queue if needed."""
-        self.lastUserActivityTime = QDateTime.currentDateTime()
-        currentTab = self.currentWidget()
-
-        if currentTab in self.pendingFocusQueue:
-            self.pendingFocusQueue.remove(currentTab)
-
-        # Clear the icon when the user views this tab
-        index = self.indexOf(currentTab)
-        if index >= 0:
-            self.setTabIcon(index, QIcon())
 
     def setEnabled(self, a0: bool) -> None:
         """Set all tabs enabled/disabled."""
@@ -202,6 +196,19 @@ class TabWidget(QTabWidget):
 
         if tabContainer not in self.pendingFocusQueue:
             self.pendingFocusQueue.append(tabContainer)
+
+    def _currentTabChanged(self):
+        """Update last activity and remove tab from queue if needed."""
+        self.lastUserActivityTime = QDateTime.currentDateTime()
+        currentTab = self.currentWidget()
+
+        if currentTab in self.pendingFocusQueue:
+            self.pendingFocusQueue.remove(currentTab)
+
+        # Clear the icon when the user views this tab
+        index = self.indexOf(currentTab)
+        if index >= 0:
+            self.setTabIcon(index, QIcon())
 
     def _checkAutoFocus(self):
         """Check if the user has been idle long enough to focus next tab."""
