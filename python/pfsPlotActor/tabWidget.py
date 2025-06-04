@@ -198,6 +198,25 @@ class TabWidget(QTabWidget):
         if tabContainer not in self.pendingFocusQueue:
             self.pendingFocusQueue.append(tabContainer)
 
+    def loadLayout(self, layoutList):
+        """Restore layout from a saved list of tab/plot definitions."""
+       #  self.clear()  # Remove any existing tabs
+
+        for tab in layoutList:
+            tabName = tab["name"]
+            plots = tab["plots"]
+            # Create a new container with enough rows and columns
+            nRows, nCols = 1, 1  # default to 1x1; or calculate based on plots if needed
+            container = tabContainer.TabContainer(self, nRows, nCols)
+
+            for plotKwargs in plots:
+                # For each plot, add it directly in the grid
+                container.setPlotWidgetInGrid(**plotKwargs)
+
+            self.addTab(container, tabName)
+
+        self.setCurrentIndex(0)
+
     def saveLayout(self):
         """Save the current layout of all tabs."""
         layoutList = []

@@ -40,6 +40,10 @@ class PfsPlot(QMainWindow):
             addTab.triggered.connect(self.centralWidget().newTabDialog)
             self.windowMenu.addAction(addTab)
 
+            loadLayout = QAction('Load Layout', self)
+            loadLayout.triggered.connect(self.loadLayoutFromFile)
+            self.windowMenu.addAction(loadLayout)
+
             saveLayout = QAction('Save Layout', self)
             saveLayout.triggered.connect(self.saveLayoutToFile)
             self.windowMenu.addAction(saveLayout)
@@ -105,6 +109,35 @@ class PfsPlot(QMainWindow):
 
         if dlg.exec_():
             self.centralWidget().setAutoFocusGracePeriod(spinBox.value())
+
+    def loadLayoutFromFile(self):
+        """Open a file dialog to load a YAML file and restore the layout."""
+        homeDir = os.path.expanduser('~')
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load Layout YAML",
+            homeDir,
+            "YAML Files (*.yaml *.yml);;All Files (*)",
+            options=options
+        )
+        if not fileName:
+            return  # User canceled
+
+        try:
+            with open(fileName, 'r') as f:
+                layout = yaml.safe_load(f)
+        except Exception as e:
+            self.centralWidget().showError("Load Layout Error", f"Failed to load layout:\n{e}")
+            return
+
+        # Let the TabWidget load the layout
+        try:
+            self.centralWidget().loadLayout(layout)
+            self.statusBar().showMessage(f"Layout loaded from: {fileName}", 5000)
+        except Exception as e:
+            self.centralWidget().showError("Load Layout Error", f"Failed to apply layout:\n{e}")
 
     def saveLayoutToFile(self):
         """Open a file dialog to save the current tab layout as a YAML file, and show a status bar message."""
