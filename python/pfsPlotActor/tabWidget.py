@@ -2,6 +2,7 @@ __author__ = 'alefur'
 
 import pfsPlotActor.layout as layout
 import pfsPlotActor.misc as misc
+import pfsPlotActor.mplCanvas as mplCanvas
 import pfsPlotActor.plotBrowser as plotBrowser
 import pfsPlotActor.tabContainer as tabContainer
 from PyQt5.QtCore import Qt, QEvent, QTimer, QDateTime
@@ -196,6 +197,48 @@ class TabWidget(QTabWidget):
 
         if tabContainer not in self.pendingFocusQueue:
             self.pendingFocusQueue.append(tabContainer)
+
+    def loadLayout(self, layoutList):
+        """Restore layout from a saved list of tab/plot definitions."""
+       #  self.clear()  # Remove any existing tabs
+
+        for tab in layoutList:
+            tabName = tab["name"]
+            plots = tab["plots"]
+            # Create a new container with enough rows and columns
+            nRows, nCols = 1, 1  # default to 1x1; or calculate based on plots if needed
+            container = tabContainer.TabContainer(self, nRows, nCols)
+
+            for plotKwargs in plots:
+                # For each plot, add it directly in the grid
+                container.setPlotWidgetInGrid(**plotKwargs)
+
+            self.addTab(container, tabName)
+
+        self.setCurrentIndex(0)
+
+    def saveLayout(self):
+        """Save the current layout of all tabs."""
+        layoutList = []
+
+        for i in range(self.count()):
+            tab = self.widget(i)
+            tabName = self.tabText(i)
+            plots = []
+
+            # Iterate over all widgets in the tab's layout grid
+            layout = tab.layout()
+            for row in range(layout.rowCount()):
+                for col in range(layout.columnCount()):
+                    item = layout.itemAtPosition(row, col)
+                    if item is not None:
+                        widget = item.widget()
+                        if isinstance(widget, mplCanvas.MplWidget):
+                            plots.append(widget.plotKwargs)
+
+            layoutList.append({"name": tabName, "plots": plots})
+
+        return layoutList
 
     def _currentTabChanged(self):
         """Update last activity and remove tab from queue if needed."""

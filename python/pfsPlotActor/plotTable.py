@@ -29,6 +29,7 @@ class TableRow(object):
 
         self.actor = QTableWidgetItem(classType.actor)
         self.key = QTableWidgetItem(classType.key)
+        self.key.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
 
         self.addButton = AddPlotButton()
         self.addButton.clicked.connect(partial(plotTable.addPlotClicked, self))
@@ -70,15 +71,16 @@ class PlotTable(QTableWidget):
     def addPlotClicked(self, tableRow, *args):
         """Called when the user click on the add plot button."""
         # updating default actor and key.
-        tableRow.classType.actor = tableRow.actor.text()
-        if not tableRow.classType.actor:
-            QMessageBox.critical(self, "Add plot failed !", "Actor field needs to be filled in...", QMessageBox.Ok)
-            return
+        fields = {"modulePath": tableRow.modPath.text(),
+                  "className": tableRow.className.text(),
+                  "actor": tableRow.actor.text(),
+                  "key": tableRow.key.text()}
 
-        tableRow.classType.key = tableRow.key.text()
-        if not tableRow.classType.key:
-            QMessageBox.critical(self, "Add plot failed !", "Key field needs to be filled in...", QMessageBox.Ok)
-            return
+        for field, text in fields.items():
+            if not text:
+                QMessageBox.critical(self, "Add plot failed !", f"{field.capitalize()} field needs to be filled in...",
+                                     QMessageBox.Ok)
+                return
 
         # class plotDialog.setPlotClass
-        self.parent().setPlotClass(tableRow.classType)
+        self.parent().setPlotClass(**fields)

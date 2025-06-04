@@ -75,11 +75,11 @@ class PlotBrowserDialog(QDialog):
 
         return livePlots
 
-    def setPlotClass(self, classType):
+    def setPlotClass(self, **plotClassKwargs):
         """Call tabContainer with classType and the button to be replaced."""
         browseButton = self.clickedFrom
         tabContainer = browseButton.parent()
-        tabContainer.setPlotWidget(classType, browseButton)
+        tabContainer.setPlotWidget(browseButton, **plotClassKwargs)
         self.close()
 
     def browse(self, browseButton):

@@ -1,7 +1,9 @@
 __author__ = 'alefur'
 
-from PyQt5.QtWidgets import QMainWindow, QAction, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QSpinBox
+import os
 
+import yaml
+from PyQt5.QtWidgets import QMainWindow, QAction, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QSpinBox, QFileDialog
 from pfsPlotActor.tabWidget import TabWidget
 
 
@@ -38,9 +40,17 @@ class PfsPlot(QMainWindow):
             addTab.triggered.connect(self.centralWidget().newTabDialog)
             self.windowMenu.addAction(addTab)
 
+            loadLayout = QAction('Load Layout', self)
+            loadLayout.triggered.connect(self.loadLayoutFromFile)
+            self.windowMenu.addAction(loadLayout)
+
+            saveLayout = QAction('Save Layout', self)
+            saveLayout.triggered.connect(self.saveLayoutToFile)
+            self.windowMenu.addAction(saveLayout)
+
             setAutofocus = QAction('Set Autofocus', self)
-            setAutofocus.setCheckable(True)  # make it a checkbox-style toggle
-            setAutofocus.setChecked(False)  # default unchecked (optional)
+            setAutofocus.setCheckable(True)
+            setAutofocus.setChecked(False)
             setAutofocus.toggled.connect(self.centralWidget().setAutofocus)
             self.configMenu.addAction(setAutofocus)
 
@@ -52,6 +62,7 @@ class PfsPlot(QMainWindow):
         self.setCentralWidget(TabWidget(self))
         setMenu()
         setActions()
+        self.statusBar().showMessage('Ready')  # initial status
         self.setWindowTitle(self.cmdrName)
 
     def setConnected(self, isConnected):
@@ -98,3 +109,58 @@ class PfsPlot(QMainWindow):
 
         if dlg.exec_():
             self.centralWidget().setAutoFocusGracePeriod(spinBox.value())
+
+    def loadLayoutFromFile(self):
+        """Open a file dialog to load a YAML file and restore the layout."""
+        homeDir = os.path.expanduser('~')
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load Layout YAML",
+            homeDir,
+            "YAML Files (*.yaml *.yml);;All Files (*)",
+            options=options
+        )
+        if not fileName:
+            return  # User canceled
+
+        try:
+            with open(fileName, 'r') as f:
+                layout = yaml.safe_load(f)
+        except Exception as e:
+            self.centralWidget().showError("Load Layout Error", f"Failed to load layout:\n{e}")
+            return
+
+        # Let the TabWidget load the layout
+        try:
+            self.centralWidget().loadLayout(layout)
+            self.statusBar().showMessage(f"Layout loaded from: {fileName}", 5000)
+        except Exception as e:
+            self.centralWidget().showError("Load Layout Error", f"Failed to apply layout:\n{e}")
+
+    def saveLayoutToFile(self):
+        """Open a file dialog to save the current tab layout as a YAML file, and show a status bar message."""
+        homeDir = os.path.expanduser('~')
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Layout as YAML",
+            homeDir,
+            "YAML Files (*.yaml *.yml);;All Files (*)",
+            options=options
+        )
+        if not fileName:
+            return  # User canceled
+
+        if not fileName.lower().endswith(('.yaml', '.yml')):
+            fileName += '.yaml'
+
+        layout = self.centralWidget().saveLayout()
+
+        with open(fileName, 'w') as f:
+            yaml.dump(layout, f, default_flow_style=False)
+
+        # Show transient message in the status bar for 5 seconds
+        self.statusBar().showMessage(f"Layout saved to: {fileName}", 5000)
