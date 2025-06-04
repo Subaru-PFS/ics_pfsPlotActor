@@ -1,7 +1,9 @@
 __author__ = 'alefur'
 
 import pfsPlotActor.layout as layout
+import pfsPlotActor.misc as misc
 import pfsPlotActor.plotBrowser as plotBrowser
+from PyQt5.QtGui import QPixmap, QIcon
 import pfsPlotActor.tabContainer as tabContainer
 from PyQt5.QtCore import Qt, QEvent, QTimer, QDateTime
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QSpinBox, QLineEdit, QLabel, QGroupBox, QMessageBox, QTabBar, \
@@ -110,6 +112,8 @@ class TabWidget(QTabWidget):
         # setting event filter tracking user activities.
         self.installEventFilter(self)
 
+        self.iconInfo = misc.Icon('information')
+
         # doAutoFocus tweak.
         self.autoFocusGracePeriod = 30  # seconds
         self.doAutoFocus = False
@@ -156,8 +160,14 @@ class TabWidget(QTabWidget):
         """Update last activity and remove tab from queue if needed."""
         self.lastUserActivityTime = QDateTime.currentDateTime()
         currentTab = self.currentWidget()
+
         if currentTab in self.pendingFocusQueue:
             self.pendingFocusQueue.remove(currentTab)
+
+        # Clear the icon when the user views this tab
+        index = self.indexOf(currentTab)
+        if index >= 0:
+            self.setTabIcon(index, QIcon())
 
     def setEnabled(self, a0: bool) -> None:
         """Set all tabs enabled/disabled."""
@@ -178,6 +188,15 @@ class TabWidget(QTabWidget):
 
     def newPlotAvailable(self, tabContainer):
         """Called when a new plot is available in a tab."""
+        if tabContainer == self.currentWidget():
+            return
+
+        # Find the index of the tabContainer in the tabs
+        index = self.indexOf(tabContainer)
+        if index >= 0:
+            # Set the information icon
+            self.setTabIcon(index, self.iconInfo)
+
         if not self.doAutoFocus:
             return
 
