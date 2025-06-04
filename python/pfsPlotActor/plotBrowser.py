@@ -25,8 +25,9 @@ class RefreshPlotTableButton(QPushButton):
 class PlotBrowserDialog(QDialog):
     """Dialog to choose which plotClass/plotWindow to add in the selected space."""
 
-    def __init__(self):
+    def __init__(self, pfsPlot):
         QDialog.__init__(self)
+        self.pfsPlot = pfsPlot
         self.plotTable = None
         self.clickedFrom = None
         self.setLayout(layout.VBoxLayout())
@@ -38,6 +39,10 @@ class PlotBrowserDialog(QDialog):
         self.refreshPlotTable()
         self.setWindowTitle('Add New Plot')
 
+    @property
+    def config(self):
+        return self.pfsPlot.actor.actorConfig
+
     def refreshPlotTable(self):
         """Dynamically refresh the available plots table."""
         if self.plotTable is not None:
@@ -47,19 +52,26 @@ class PlotBrowserDialog(QDialog):
         self.plotTable = plotTable.PlotTable(self, self.inspectPlotDefinition())
         self.layout().addWidget(self.plotTable)
 
-        self.resize(self.plotTable.actualWidth+20, self.height())
+        self.resize(self.plotTable.actualWidth + 20, self.height())
 
     def inspectPlotDefinition(self):
         """Inspect pfsPlotActor.plots and look for livePlot subclasses."""
         reload(plots)
+        ignorePlots = self.config.get('ignorePlots', [])
+
         livePlots = []
 
         for __, modName, __ in pkgutil.iter_modules(plots.__path__):
             modPath = f'pfsPlotActor.plots.{modName}'
             spec = find_spec(modPath)
             module = spec.loader.load_module()
-            livePlots.extend([(modPath, className, classType) for className, classType in inspect.getmembers(module) if
-                              inspect.isclass(classType) and issubclass(classType, livePlot.LivePlot)])
+
+            for className, classType in inspect.getmembers(module):
+                if className in ignorePlots:
+                    continue
+
+                if inspect.isclass(classType) and issubclass(classType, livePlot.LivePlot):
+                    livePlots.append((modPath, className, classType))
 
         return livePlots
 

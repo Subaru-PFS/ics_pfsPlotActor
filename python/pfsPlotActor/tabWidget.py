@@ -102,7 +102,7 @@ class TabWidget(QTabWidget):
     def __init__(self, pfsPlot):
         super().__init__()
         self.pfsPlot = pfsPlot
-        self.plotBrowserDialog = plotBrowser.PlotBrowserDialog()
+        self.plotBrowserDialog = plotBrowser.PlotBrowserDialog(pfsPlot)
 
         self.setTabsClosable(True)
         self.setTabBar(EditableTabBar(self))
