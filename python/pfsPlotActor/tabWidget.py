@@ -6,6 +6,7 @@ import pfsPlotActor.mplCanvas as mplCanvas
 import pfsPlotActor.plotBrowser as plotBrowser
 import pfsPlotActor.tabContainer as tabContainer
 from PyQt5.QtCore import Qt, QEvent, QTimer, QDateTime
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QSpinBox, QLineEdit, QLabel, QGroupBox, QMessageBox, QTabBar, \
     QTabWidget
@@ -99,6 +100,7 @@ class EditableTabBar(QTabBar):
 
 class TabWidget(QTabWidget):
     """Main tab widget managing tab layout and auto-focus logic."""
+    autoTabFocusChanged = pyqtSignal(bool)
 
     def __init__(self, pfsPlot):
         super().__init__()
@@ -116,14 +118,14 @@ class TabWidget(QTabWidget):
         self.iconInfo = misc.Icon('information')
 
         # doAutoFocus tweak.
-        self.autoFocusGracePeriod = 30  # seconds
-        self.doAutoFocus = False
+        self.autoTabDelay = 30  # seconds
+        self.autoTabFocus = False
         self.pendingFocusQueue = []
         self.lastUserActivityTime = QDateTime.currentDateTime()
 
         self.autoFocusTimer = QTimer(self)
         self.autoFocusTimer.setInterval(1000)  # check every second
-        self.autoFocusTimer.timeout.connect(self._checkAutoFocus)
+        self.autoFocusTimer.timeout.connect(self._checkAutoTabFocus)
         self.autoFocusTimer.start()
 
         self.setMouseTracking(True)
@@ -173,13 +175,14 @@ class TabWidget(QTabWidget):
         """Show an error dialog."""
         QMessageBox.critical(self, title, error, QMessageBox.Ok)
 
-    def setAutofocus(self, state: bool):
-        """Enable or disable auto-focus."""
-        self.doAutoFocus = state
+    def setAutoTabFocus(self, state: bool):
+        """Enable or disable Auto-Tab Focus."""
+        self.autoTabFocus = state
+        self.autoTabFocusChanged.emit(state)
 
-    def setAutoFocusGracePeriod(self, seconds: int):
+    def setAutoTabDelay(self, seconds: int):
         """Set the idle threshold for auto-focus in seconds."""
-        self.autoFocusGracePeriod = seconds
+        self.autoTabDelay = seconds
 
     def newPlotAvailable(self, tabContainer):
         """Called when a new plot is available in a tab."""
@@ -192,7 +195,7 @@ class TabWidget(QTabWidget):
             # Set the information icon
             self.setTabIcon(index, self.iconInfo)
 
-        if not self.doAutoFocus:
+        if not self.autoTabFocus:
             return
 
         if tabContainer not in self.pendingFocusQueue:
@@ -200,7 +203,7 @@ class TabWidget(QTabWidget):
 
     def loadLayout(self, layoutList):
         """Restore layout from a saved list of tab/plot definitions."""
-       #  self.clear()  # Remove any existing tabs
+        #  self.clear()  # Remove any existing tabs
 
         for tab in layoutList:
             tabName = tab["name"]
@@ -253,14 +256,14 @@ class TabWidget(QTabWidget):
         if index >= 0:
             self.setTabIcon(index, QIcon())
 
-    def _checkAutoFocus(self):
+    def _checkAutoTabFocus(self):
         """Check if the user has been idle long enough to focus next tab."""
-        if not self.doAutoFocus or not self.pendingFocusQueue:
+        if not self.autoTabFocus or not self.pendingFocusQueue:
             return
 
         idleSecs = self.lastUserActivityTime.secsTo(QDateTime.currentDateTime())
 
-        if idleSecs >= self.autoFocusGracePeriod:
+        if idleSecs >= self.autoTabDelay:
             nextTab = self.pendingFocusQueue.pop(0)
             self.setCurrentWidget(nextTab)
             self.lastUserActivityTime = QDateTime.currentDateTime()

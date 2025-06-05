@@ -30,6 +30,9 @@ class PfsPlot(QMainWindow):
     def constructMainCanvas(self):
         """Construct your main canvas."""
 
+        autoTabFocusDefault = self.actor.actorConfig.get('setAutoTabFocus', False)
+        autoTabDelayDefault = self.actor.actorConfig.get('setAutoTabDelay', 30)
+
         def setMenu():
             self.windowMenu = self.menuBar().addMenu('&Windows')
             self.configMenu = self.menuBar().addMenu('&Configuration')
@@ -48,20 +51,29 @@ class PfsPlot(QMainWindow):
             saveLayout.triggered.connect(self.saveLayoutToFile)
             self.windowMenu.addAction(saveLayout)
 
-            setAutofocus = QAction('Set Autofocus', self)
-            setAutofocus.setCheckable(True)
-            setAutofocus.setChecked(False)
-            setAutofocus.toggled.connect(self.centralWidget().setAutofocus)
-            self.configMenu.addAction(setAutofocus)
+            setAutoTabFocus = QAction('Set Auto-Tab Focus', self)
+            setAutoTabFocus.setCheckable(True)
+            setAutoTabFocus.setChecked(autoTabFocusDefault)
+            self.centralWidget().autoTabFocus = autoTabFocusDefault
+            self.centralWidget().autoTabDelay = autoTabDelayDefault
+            setAutoTabFocus.toggled.connect(self.centralWidget().setAutoTabFocus)
+            self.configMenu.addAction(setAutoTabFocus)
 
-            setGrace = QAction('Set AutoFocus Grace Period…', self)
-            setGrace.triggered.connect(self.showSetGraceDialog)
-            self.configMenu.addAction(setGrace)
+            setAutoTabDelay = QAction('Set Auto-Tab Delay', self)
+            setAutoTabDelay.triggered.connect(self.setAutoTabDelay)
+            self.configMenu.addAction(setAutoTabDelay)
 
         # our centralWidget is actually a TabWidget.
         self.setCentralWidget(TabWidget(self))
         setMenu()
         setActions()
+
+        # adding label for Auto-Tab focus and connect signal.
+        self.autoTabFocusStatus = QLabel()
+        self.updateAutoTabFocusStatus(autoTabFocusDefault)
+        self.statusBar().addPermanentWidget(self.autoTabFocusStatus)
+        self.centralWidget().autoTabFocusChanged.connect(self.updateAutoTabFocusStatus)
+
         self.statusBar().showMessage('Ready')  # initial status
         self.setWindowTitle(self.cmdrName)
 
@@ -87,16 +99,17 @@ class PfsPlot(QMainWindow):
         self.reactor.callFromThread(self.reactor.stop)
         QCloseEvent.accept()
 
-    def showSetGraceDialog(self):
+    def setAutoTabDelay(self):
+        """Open a dialog to set the delay for Auto-Tab Focus."""
         dlg = QDialog(self)
-        dlg.setWindowTitle("Set AutoFocus Grace Period")
+        dlg.setWindowTitle("Auto-Tab Config")
 
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Auto-focus delay (seconds):"))
+        layout.addWidget(QLabel("Set Auto-Tab Focus delay (seconds):"))
 
         spinBox = QSpinBox()
         spinBox.setRange(5, 600)
-        spinBox.setValue(self.centralWidget().autoFocusGracePeriod)
+        spinBox.setValue(self.centralWidget().autoTabDelay)
         layout.addWidget(spinBox)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -108,7 +121,16 @@ class PfsPlot(QMainWindow):
         buttons.rejected.connect(dlg.reject)
 
         if dlg.exec_():
-            self.centralWidget().setAutoFocusGracePeriod(spinBox.value())
+            self.centralWidget().setAutoTabDelay(spinBox.value())
+
+    def updateAutoTabFocusStatus(self, isOn):
+        """Update the Auto-Tab Focus status label's text and style based on state."""
+        if isOn:
+            self.autoTabFocusStatus.setText("Auto-Tab Focus: ON")
+            self.autoTabFocusStatus.setStyleSheet("color: green; font-weight: bold; font-size: 11pt;")
+        else:
+            self.autoTabFocusStatus.setText("Auto-Tab Focus: OFF")
+            self.autoTabFocusStatus.setStyleSheet("color: red; font-weight: bold; font-size: 11pt;")
 
     def loadLayoutFromFile(self):
         """Open a file dialog to load a YAML file and restore the layout."""
