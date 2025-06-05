@@ -208,9 +208,8 @@ class TabWidget(QTabWidget):
         for tab in layoutList:
             tabName = tab["name"]
             plots = tab["plots"]
-            # Create a new container with enough rows and columns
-            nRows, nCols = 1, 1  # default to 1x1; or calculate based on plots if needed
-            container = tabContainer.TabContainer(self, nRows, nCols)
+            # Create a new container, not need to declare row and col, as it only for the button.
+            container = tabContainer.TabContainer(self, 0, 0)
 
             for plotKwargs in plots:
                 # For each plot, add it directly in the grid
