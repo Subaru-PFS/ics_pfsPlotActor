@@ -39,29 +39,33 @@ class PfsPlot(QMainWindow):
             self.helpMenu = self.menuBar().addMenu('&?')
 
         def setActions():
-            addTab = QAction('Add Tab', self)
-            addTab.triggered.connect(self.centralWidget().newTabDialog)
-            self.windowMenu.addAction(addTab)
+            addTabAction = QAction('Add Tab', self)
+            addTabAction.triggered.connect(self.centralWidget().newTabDialog)
+            self.windowMenu.addAction(addTabAction)
 
-            loadLayout = QAction('Load Layout', self)
-            loadLayout.triggered.connect(self.loadLayoutFromFile)
-            self.windowMenu.addAction(loadLayout)
+            clearTabsAction = QAction('Clear All Tabs', self)
+            clearTabsAction.triggered.connect(self.clearAllTabs)
+            self.windowMenu.addAction(clearTabsAction)
 
-            saveLayout = QAction('Save Layout', self)
-            saveLayout.triggered.connect(self.saveLayoutToFile)
-            self.windowMenu.addAction(saveLayout)
+            loadLayoutAction = QAction('Load Layout', self)
+            loadLayoutAction.triggered.connect(self.loadLayoutFromFile)
+            self.windowMenu.addAction(loadLayoutAction)
 
-            setAutoTabFocus = QAction('Set Auto-Tab Focus', self)
-            setAutoTabFocus.setCheckable(True)
-            setAutoTabFocus.setChecked(autoTabFocusDefault)
+            saveLayoutAction = QAction('Save Layout', self)
+            saveLayoutAction.triggered.connect(self.saveLayoutToFile)
+            self.windowMenu.addAction(saveLayoutAction)
+
+            setAutoTabFocusAction = QAction('Set Auto-Tab Focus', self)
+            setAutoTabFocusAction.setCheckable(True)
+            setAutoTabFocusAction.setChecked(autoTabFocusDefault)
             self.centralWidget().autoTabFocus = autoTabFocusDefault
             self.centralWidget().autoTabDelay = autoTabDelayDefault
-            setAutoTabFocus.toggled.connect(self.centralWidget().setAutoTabFocus)
-            self.configMenu.addAction(setAutoTabFocus)
+            setAutoTabFocusAction.toggled.connect(self.centralWidget().setAutoTabFocus)
+            self.configMenu.addAction(setAutoTabFocusAction)
 
-            setAutoTabDelay = QAction('Set Auto-Tab Delay', self)
-            setAutoTabDelay.triggered.connect(self.setAutoTabDelay)
-            self.configMenu.addAction(setAutoTabDelay)
+            setAutoTabDelayAction = QAction('Set Auto-Tab Delay', self)
+            setAutoTabDelayAction.triggered.connect(self.setAutoTabDelay)
+            self.configMenu.addAction(setAutoTabDelayAction)
 
         # our centralWidget is actually a TabWidget.
         self.setCentralWidget(TabWidget(self))
@@ -74,7 +78,7 @@ class PfsPlot(QMainWindow):
         self.statusBar().addPermanentWidget(self.autoTabFocusStatus)
         self.centralWidget().autoTabFocusChanged.connect(self.updateAutoTabFocusStatus)
 
-        self.statusBar().showMessage('Ready')  # initial status
+        self.statusBar().showMessage('ready')  # initial status
         self.setWindowTitle(self.cmdrName)
 
     def setConnected(self, isConnected):
@@ -105,7 +109,7 @@ class PfsPlot(QMainWindow):
         dlg.setWindowTitle("Auto-Tab Config")
 
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Set Auto-Tab Focus delay (seconds):"))
+        layout.addWidget(QLabel("Set Auto-Tab delay (seconds):"))
 
         spinBox = QSpinBox()
         spinBox.setRange(5, 600)
@@ -132,6 +136,11 @@ class PfsPlot(QMainWindow):
             self.autoTabFocusStatus.setText("Auto-Tab Focus: OFF")
             self.autoTabFocusStatus.setStyleSheet("color: red; font-weight: bold; font-size: 11pt;")
 
+    def clearAllTabs(self):
+        """Clear all open tabs in the TabWidget."""
+        self.centralWidget().clear()
+        self.statusBar().showMessage("all tabs cleared", 5000)
+
     def loadLayoutFromFile(self):
         """Open a file dialog to load a YAML file and restore the layout."""
         homeDir = os.path.expanduser('~')
@@ -157,7 +166,7 @@ class PfsPlot(QMainWindow):
         # Let the TabWidget load the layout
         try:
             self.centralWidget().loadLayout(layout)
-            self.statusBar().showMessage(f"Layout loaded from: {fileName}", 5000)
+            self.statusBar().showMessage(f"layout loaded from: {fileName}", 5000)
         except Exception as e:
             self.centralWidget().showError("Load Layout Error", f"Failed to apply layout:\n{e}")
 
@@ -185,4 +194,4 @@ class PfsPlot(QMainWindow):
             yaml.dump(layout, f, default_flow_style=False)
 
         # Show transient message in the status bar for 5 seconds
-        self.statusBar().showMessage(f"Layout saved to: {fileName}", 5000)
+        self.statusBar().showMessage(f"layout saved to: {fileName}", 5000)
