@@ -46,7 +46,7 @@ class AgPlot(livePlot.LivePlot):
 
     def identify(self, keyvar, newValue):
         """load the ag data"""
-        exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
+        exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale, status = keyvar.getValue()
         sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
         [visitId, ] = sysUtils.pd_read_sql(sql, AgPlot.opdb).pfs_visit_id.to_numpy()
 
