@@ -48,8 +48,12 @@ class FocusPlot(agUtils.AgPlot):
         sql = f'select exp_type from sps_visit where pfs_visit_id={visitId}'
         exptype = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
 
-        if exptype != 'object':
+        if newValue and exptype != 'object':
             return dict(skipPlotting=True, newValue=newValue)
+
+        else:
+            sql = f"select max(pfs_visit_id) from sps_visit where exp_type='object'"
+            visitId = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
 
         return dict(dataId=visitId, newValue=newValue)
 
