@@ -1,10 +1,8 @@
-setupRequired(tron_actorcore)
-setupRequired(pfs_utils)
-setupRequired(ics_cobraCharmer)
 setupRequired(ics_actorkeys)
+setupRequired(ics_cobraCharmer)
 setupRequired(ics_xcu_fpga)
-
 setupRequired(datamodel)
+setupRequired(pfs_utils)
 setupRequired(drp_stella)
 
 pathPrepend(PATH, ${PRODUCT_DIR}/bin)
