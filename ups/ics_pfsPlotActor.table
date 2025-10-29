@@ -1,9 +1,7 @@
 setupRequired(ics_actorkeys)
 setupRequired(ics_cobraCharmer)
 setupRequired(ics_xcu_fpga)
-setupRequired(datamodel)
-setupRequired(pfs_utils)
-setupRequired(drp_stella)
+setupRequired(pfs_pipe2d)
 
 pathPrepend(PATH, ${PRODUCT_DIR}/bin)
 pathPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
