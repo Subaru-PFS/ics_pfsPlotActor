@@ -45,10 +45,18 @@ class ConvergencePlot(livePlot.LivePlot):
         return sysUtils.pd_read_sql(sql, ConvergencePlot.opdb)
 
     @staticmethod
-    def loadTargetType(visitId):
-        sql = f'select fiber_id,target_type from pfs_design_fiber ' \
-              f'inner join pfs_config on pfs_config.pfs_design_id=pfs_design_fiber.pfs_design_id where visit0={visitId}'
-        return sysUtils.pd_read_sql(sql, ConvergencePlot.opdb)
+    def loadPfsConfigFromDB(visitId):
+        sql = (
+            "SELECT pcf.fiber_id, pdf.target_type, pcf.fiber_status "
+            "FROM pfs_config AS pc "
+            "INNER JOIN pfs_config_fiber AS pcf "
+            "ON pcf.pfs_design_id = pc.pfs_design_id AND pcf.visit0 = pc.visit0 "
+            "INNER JOIN pfs_design_fiber AS pdf "
+            "ON pdf.pfs_design_id = pc.pfs_design_id AND pdf.fiber_id = pcf.fiber_id "
+            f"WHERE pc.visit0 = {visitId}"
+        )
+
+        return sysUtils.pd_read_sql(sql, ConvergencePlot.opdb).set_index('fiber_id').sort_index()
 
     @staticmethod
     def getPfsDesignId(visitId):
@@ -81,11 +89,12 @@ class ConvergencePlot(livePlot.LivePlot):
         """Plot the latest dataset."""
         pass
 
-    def addTargetInfo(self, iterData, targetType):
+    def addPfsConfigInfo(self, iterData, pfsConfigDf):
         """add target information."""
         iterData = iterData.copy()
         iterData['fiberId'] = sgfm.loc[iterData.cobra_id.to_numpy() - 1].fiberId.to_numpy()
-        iterData['targetType'] = targetType.set_index('fiber_id').loc[iterData.fiberId.to_numpy()].to_numpy()
+        iterData['targetType'] = pfsConfigDf.loc[iterData.fiberId.to_numpy()].target_type.to_numpy()
+        iterData['fiberStatus'] = pfsConfigDf.loc[iterData.fiberId.to_numpy()].fiber_status.to_numpy()
         return iterData
 
     def selectData(self, latestVisitId, visitId):
