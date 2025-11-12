@@ -21,7 +21,7 @@ class LivePlot(object):
     # actor and key that to attach the callback to.
     actor = None
     key = None
-    noCallback = False
+    addCallback = True
     units = dict()
 
     def __init__(self, tabContainer, canvas):
@@ -68,9 +68,9 @@ class LivePlot(object):
         newValue = keyvar is not None
         keyvar = self.keyvar if keyvar is None else keyvar
 
-        # I think that's the equivalent.
-        if self.noCallback or keyvar is None:
-            return dict()
+        # When you restart and keyvar was not generated yet, you still want to be able to plot using visit box.
+        if self.addCallback and keyvar is None:
+            return dict(newValue=newValue, dataId=None)
 
         self.keyvar = keyvar
 
@@ -78,7 +78,7 @@ class LivePlot(object):
         try:
             dataIdFromKeyword = self.identify(keyvar, newValue=newValue)
         except ValueError:
-            dataIdFromKeyword = dict()
+            dataIdFromKeyword = dict(newValue=newValue, dataId=None, skipPlotting=newValue)
 
         return dataIdFromKeyword
 
@@ -90,7 +90,7 @@ class LivePlot(object):
         skipPlotting = dataIdFromKeyword.get('skipPlotting', False)
         newValue = dataIdFromKeyword.get('newValue', False)
 
-        if skipPlotting or (dataId is None and not self.noCallback):
+        if skipPlotting:
             return
 
         QApplication.setOverrideCursor(Qt.WaitCursor)  # ⏳ show busy cursor
