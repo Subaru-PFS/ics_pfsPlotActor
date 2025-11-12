@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pfsPlotActor.utils.pfi as pfiUtils
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from pfs.datamodel import TargetType
+from pfs.datamodel import TargetType, FiberStatus
 from pfsPlotActor.utils.sgfm import calibModel
 
 reload(pfiUtils)
@@ -39,8 +39,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         if iterData.empty:
             return
 
-        targetType = self.loadTargetType(visitId)
-        iterData = self.addTargetInfo(iterData, targetType)
+        pfsConfigDf = self.loadPfsConfigFromDB(visitId)
+        iterData = self.addPfsConfigInfo(iterData, pfsConfigDf)
 
         # show broken cobras.
         bad = iterData.loc[self.badIdx]
@@ -49,10 +49,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
                     alpha=0.5)
 
         # show moving cobras.
-        iterData = iterData.loc[self.goodIdx]
-
-        # do not show unassigned cobras.
-        iterData = iterData[iterData.targetType != TargetType.UNASSIGNED]
+        iterData = self.selectMovingCobras(iterData)
 
         # calculate distance from targets at this iteration.
         dx = iterData.pfi_center_x_mm - iterData.pfi_target_x_mm
@@ -99,11 +96,9 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         cmap = cmap(np.linspace(1.0, 0, len(convergeData.iteration.unique())))
 
         for i, (iterVal, iterData) in enumerate(convergeData.groupby('iteration')):
-            iterData = self.addTargetInfo(iterData, targetType).reset_index()
+            iterData = self.addPfsConfigInfo(iterData, pfsConfigDf).reset_index()
             # show moving cobras.
-            iterData = iterData.loc[self.goodIdx]
-            # do not show unassigned cobras.
-            iterData = iterData[iterData.targetType != TargetType.UNASSIGNED]
+            iterData = self.selectMovingCobras(iterData)
 
             dx = iterData.pfi_center_x_mm - iterData.pfi_target_x_mm
             dy = iterData.pfi_center_y_mm - iterData.pfi_target_y_mm
@@ -140,3 +135,11 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         fig.tight_layout()
 
         return True
+
+    def selectMovingCobras(self, iterData):
+        """Filter cobras returning only moving cobras."""
+        # show moving cobras.
+        iterData = iterData.loc[self.goodIdx]
+        # do not show UNASSIGNED and  MASKED cobras.
+        MASK = (iterData.targetType != TargetType.UNASSIGNED) & (iterData.fiberStatus != FiberStatus.MASKED)
+        return iterData[MASK]
