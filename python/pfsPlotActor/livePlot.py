@@ -84,6 +84,7 @@ class LivePlot(object):
 
     def update(self, keyvar=None):
         """Callback called each time a new key is generated, basically clear previous axes and plot latest dataset."""
+        print(keyvar)
         dataIdFromKeyword = self.getDataIdFromKeyword(keyvar)
 
         dataId = dataIdFromKeyword.get('dataId')
@@ -98,6 +99,7 @@ class LivePlot(object):
         try:
             plotted = self.plot(dataId, **self.tweakDict)
         except Exception as e:
+            raise
             logging.warning(e)
             return
         finally:
