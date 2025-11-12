@@ -46,7 +46,7 @@ class TabContainer(QWidget):
         w1.addTweakingWidgets(obj)
 
         # adding callbacks
-        if not obj.noCallback:
+        if obj.addCallback:
             self.tabWidget.actor.requireModels([obj.actor])
             self.tabWidget.actor.models[obj.actor].keyVarDict[obj.key].addCallback(obj.update)
 
