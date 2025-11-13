@@ -1,7 +1,7 @@
 import numpy as np
 import pfs.drp.stella.utils.sysUtils as sysUtils
 import pfsPlotActor.livePlot as livePlot
-from pfs.datamodel import PfsDesign
+from pfs.datamodel import TargetType, FiberStatus, PfsDesign
 from pfsPlotActor.utils.sgfm import sgfm
 
 
@@ -96,6 +96,14 @@ class ConvergencePlot(livePlot.LivePlot):
         iterData['targetType'] = pfsConfigDf.loc[iterData.fiberId.to_numpy()].target_type.to_numpy()
         iterData['fiberStatus'] = pfsConfigDf.loc[iterData.fiberId.to_numpy()].fiber_status.to_numpy()
         return iterData
+
+    def selectMovingCobras(self, iterData):
+        """Filter cobras returning only moving cobras."""
+        # show moving cobras.
+        iterData = iterData.loc[self.goodIdx]
+        # do not show UNASSIGNED and  MASKED cobras.
+        MASK = (iterData.targetType != TargetType.UNASSIGNED) & (iterData.fiberStatus != FiberStatus.MASKED)
+        return iterData[MASK]
 
     def selectData(self, latestVisitId, visitId):
         """The user might choose another visitId."""
