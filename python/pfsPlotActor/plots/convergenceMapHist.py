@@ -11,14 +11,12 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
 
     def initialize(self):
         """Initialize your axes and colorbar"""
-        self.colorbar = None
         ax1 = [self.fig.add_subplot(121)]
         ax2 = [self.fig.add_subplot(122)]
         return ax1 + ax2
 
     def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3, showPercentiles='75,95'):
         """Plot the latest dataset."""
-        fig = self.fig
         ax1 = self.axes[0]
         ax2 = self.axes[1]
 

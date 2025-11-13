@@ -116,12 +116,14 @@ def plotFiducialRMS(convergencePlot, ax1, ax2, convergeData, fidsData, vmin=0, v
         ax1.quiverkey(Q, X=0.85, Y=0.1, U=arrowSize, label=f'{arrowSize} microns', labelpos='E', coordinates='axes')
 
     # Update or create colorbar
-    if convergencePlot.colorbar is None:
+    colorbar = convergencePlot.colorbars.get(ax1, None)
+
+    if colorbar is None:
         divider = make_axes_locatable(ax1)
         cax = divider.append_axes("right", size="5%", pad=0.05)
-        convergencePlot.colorbar = fig.colorbar(sc, cax=cax)
+        convergencePlot.colorbars[ax1] = fig.colorbar(sc, cax=cax)
     else:
-        convergencePlot.colorbar.update_normal(sc)
+        colorbar.update_normal(sc)
 
     # Histogram of RMS
     fiducialMedianRMS = perFiducialRMS.rms.median()

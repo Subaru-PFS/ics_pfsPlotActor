@@ -30,6 +30,7 @@ class LivePlot(object):
 
         axes = self.initialize()
         self.axes = [axes] if not isinstance(axes, Iterable) else axes
+        self.colorbars = dict()
         self.tweaks = dict()
         self.keyvar = None
 

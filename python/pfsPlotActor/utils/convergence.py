@@ -36,17 +36,15 @@ def plotConvergenceScatterAndHist(convergencePlot, ax1, ax2, convergeData, iterD
                      calibModel.centers.imag[iterData['cobra_id'].values - 1],
                      c=dist, marker='o', s=20, vmin=vmin, vmax=vmax)
 
-    if convergencePlot.colorbar is None:
-        # creating new colorbar.
-        # cbar_ax = fig.add_axes([0.45, 0.15, 0.02, 0.7])
-        # convergencePlot.colorbar = fig.colorbar(sc, cax=cbar_ax)
+    # Update or create colorbar
+    colorbar = convergencePlot.colorbars.get(ax1, None)
+
+    if colorbar is None:
         divider = make_axes_locatable(ax1)
         cax = divider.append_axes("right", size="5%", pad=0.05)
-        convergencePlot.colorbar = fig.colorbar(sc, cax=cax)
-
+        convergencePlot.colorbars[ax1] = fig.colorbar(sc, cax=cax)
     else:
-        # or update existing one.
-        convergencePlot.colorbar.update_normal(sc)
+        colorbar.update_normal(sc)
 
     # some labels
     ax1.set_xlabel("X (mm)")

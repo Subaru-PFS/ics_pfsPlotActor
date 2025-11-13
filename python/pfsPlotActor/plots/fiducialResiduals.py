@@ -23,7 +23,6 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
         """
         Initialize plot axes and colorbar.
         """
-        self.colorbar = None
         ax1 = self.fig.add_subplot(121)  # Scatter plot of residuals
         ax2 = self.fig.add_subplot(122)  # Histogram of RMS
         return [ax1, ax2]
