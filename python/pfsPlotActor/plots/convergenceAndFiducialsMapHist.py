@@ -12,11 +12,12 @@ class ConvergenceAndFiducialsMapHist(pfiUtils.ConvergencePlot):
 
     def initialize(self):
         """Initialize your axes and colorbar"""
-        axes = [self.fig.add_subplot(141),
-                self.fig.add_subplot(142),
-                self.fig.add_subplot(143),
-                self.fig.add_subplot(144)]
-        return axes
+        gs = self.fig.add_gridspec(nrows=2, ncols=3)
+        ax1 = self.fig.add_subplot(gs[:, 0])  # spans rows 0..1, col 0
+        ax2 = self.fig.add_subplot(gs[:, 1])  # spans rows 0..1, col 1
+        ax3 = self.fig.add_subplot(gs[0, 2])  # row 0, col 2
+        ax4 = self.fig.add_subplot(gs[1, 2])  # row 1, col 2
+        return [ax1, ax2, ax3, ax4]
 
     def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3, showPercentiles='75,95',
              rmsMin=0, rmsMax=15, rmsBins=20, addBrokenCobras=False, showDisplacementAsArrow=False, arrowSize='auto'):
