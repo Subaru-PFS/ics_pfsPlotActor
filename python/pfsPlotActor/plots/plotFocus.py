@@ -46,14 +46,14 @@ class FocusPlot(agUtils.AgPlot):
         """load the ag data"""
         visitId, camList, camMask = keyvar.getValue()
         sql = f'select exp_type from sps_visit where pfs_visit_id={visitId}'
-        exptype = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
+        exptype = agUtils.AgPlot.opdb.query_dataframe(sql).squeeze()
 
         if newValue and exptype != 'object':
             return dict(skipPlotting=True, newValue=newValue)
 
         else:
             sql = f"select max(pfs_visit_id) from sps_visit where exp_type='object'"
-            visitId = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
+            visitId = agUtils.AgPlot.opdb.query_dataframe(sql).squeeze()
 
         return dict(dataId=visitId, newValue=newValue)
 
@@ -150,7 +150,7 @@ class FocusPlot(agUtils.AgPlot):
 
         useAgcData = self.agcData if useCache else None
 
-        agcData = guiders.plotFocus(self.opdb, visits, agcData=useAgcData, AGC=AGC,
+        agcData = guiders.plotFocus(self.getConn(), visits, agcData=useAgcData, AGC=AGC,
                                     **plotParams, figure=self.fig, axes=self.axes)
 
         self.fig.tight_layout()

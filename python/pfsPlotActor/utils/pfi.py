@@ -1,7 +1,7 @@
 import numpy as np
-import pfs.drp.stella.utils.sysUtils as sysUtils
 import pfsPlotActor.livePlot as livePlot
 from pfs.datamodel import PfsDesign
+from pfs.utils.database import opdb as opdbIO
 from pfsPlotActor.utils.sgfm import sgfm
 
 
@@ -10,12 +10,11 @@ class ConvergencePlot(livePlot.LivePlot):
     # needs to be overridden by the user.
     actor = 'fps'
 
-    opdb = livePlot.LivePlot.getConn()
-
     badIdx = sgfm[~sgfm.COBRA_OK_MASK].index.to_numpy()
     goodIdx = sgfm[sgfm.COBRA_OK_MASK].index.to_numpy()
 
     pfsDesign = None
+    opdb = opdbIO.OpDB()
 
     @staticmethod
     def cobraIdFiberIdFormatter(x, y):
@@ -42,7 +41,7 @@ class ConvergencePlot(livePlot.LivePlot):
               f'on md.mcs_frame_id = cm.pfs_visit_id * 100 + cm.iteration and md.spot_id = cm.spot_id where cm.pfs_visit_id = {visitId} order by ct.cobra_id, ct.iteration'
 
         # get data
-        return sysUtils.pd_read_sql(sql, ConvergencePlot.opdb)
+        return ConvergencePlot.opdb.query_dataframe(sql)
 
     @staticmethod
     def loadPfsConfigFromDB(visitId):
@@ -56,19 +55,19 @@ class ConvergencePlot(livePlot.LivePlot):
             f"WHERE pc.visit0 = {visitId}"
         )
 
-        return sysUtils.pd_read_sql(sql, ConvergencePlot.opdb).set_index('fiber_id').sort_index()
+        return ConvergencePlot.opdb.query_dataframe(sql).set_index('fiber_id').sort_index()
 
     @staticmethod
     def getPfsDesignId(visitId):
         visitId = int(visitId)
         sql = f'select pfs_design_id from pfs_visit where pfs_visit_id={visitId}'
-        [[pfsDesignId]] = sysUtils.pd_read_sql(sql, ConvergencePlot.opdb).to_numpy()
+        [[pfsDesignId]] = ConvergencePlot.opdb.query_dataframe(sql).to_numpy()
         return pfsDesignId
 
     @staticmethod
     def getFiducialData(visitId):
         sql = f'SELECT * from fiducial_fiber_match WHERE pfs_visit_id={visitId}'
-        return sysUtils.pd_read_sql(sql, ConvergencePlot.opdb)
+        return ConvergencePlot.opdb.query_dataframe(sql)
 
     @staticmethod
     def getPfsDesign(designId):

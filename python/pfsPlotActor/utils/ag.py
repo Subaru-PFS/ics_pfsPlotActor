@@ -1,6 +1,6 @@
 import pfs.drp.stella.utils.guiders as guiders
-import pfs.drp.stella.utils.sysUtils as sysUtils
 import pfsPlotActor.livePlot as livePlot
+from pfs.utils.database import opdb as opdbIO
 
 
 class AgPlot(livePlot.LivePlot):
@@ -8,7 +8,7 @@ class AgPlot(livePlot.LivePlot):
     # needs to be overridden by the user.
     actor = 'ag'
 
-    opdb = livePlot.LivePlot.getConn()
+    opdb = opdbIO.OpDB()
 
     @staticmethod
     def readData(visitId, includeAllVisitsInGroup=False):
@@ -18,21 +18,20 @@ class AgPlot(livePlot.LivePlot):
         This loads the results at a given iteration
         """
         visits = AgPlot.getAllVisits(visitId, includeAllVisitsInGroup=includeAllVisitsInGroup)
-        return guiders.readAgcDataFromOpdb(AgPlot.opdb, visits=visits)
+        return guiders.readAgcDataFromOpdb(livePlot.LivePlot.getConn(), visits=visits)
+        # return guiders.readAgcDataFromOpdb(AgPlot.opdb.connect(), visits=visits)
 
     @staticmethod
     def getAllVisits(visitId, includeAllVisitsInGroup=False):
         visits = [visitId]
 
         if includeAllVisitsInGroup:
-            visit0 = sysUtils.pd_read_sql(
-                f'select pfs_visit_id, visit0 from pfs_config_sps where pfs_visit_id={visitId}',
-                AgPlot.opdb)
+            visit0 = AgPlot.opdb.query_dataframe(
+                f'select pfs_visit_id, visit0 from pfs_config_sps where pfs_visit_id={visitId}')
 
             if visit0.size:
-                allVisits = sysUtils.pd_read_sql(
-                    f'select pfs_visit_id, visit0 from pfs_config_sps where visit0={visit0.squeeze().visit0}',
-                    AgPlot.opdb)
+                allVisits = AgPlot.opdb.query_dataframe(
+                    f'select pfs_visit_id, visit0 from pfs_config_sps where visit0={visit0.squeeze().visit0}')
                 visits += list(allVisits.pfs_visit_id)
                 visits = list(set(visits))
 
@@ -48,7 +47,7 @@ class AgPlot(livePlot.LivePlot):
         """load the ag data"""
         exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale, status = keyvar.getValue()
         sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
-        [visitId, ] = sysUtils.pd_read_sql(sql, AgPlot.opdb).pfs_visit_id.to_numpy()
+        [visitId, ] = AgPlot.opdb.query_dataframe(sql).pfs_visit_id.to_numpy()
 
         return dict(dataId=visitId, newValue=newValue)
 

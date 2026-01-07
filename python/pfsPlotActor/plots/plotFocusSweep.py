@@ -1,7 +1,6 @@
 from importlib import reload
 
 import pfs.drp.stella.utils.guiders as guiders
-import pfs.drp.stella.utils.sysUtils as sysUtils
 import pfsPlotActor.utils.ag as agUtils
 
 reload(agUtils)
@@ -41,20 +40,20 @@ class FocusSweepPlot(agUtils.AgPlot):
         if newValue:
             exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
             sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
-            [visitId, ] = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).pfs_visit_id.to_numpy()
+            [visitId, ] = agUtils.AgPlot.opdb.query_dataframe(sql).pfs_visit_id.to_numpy()
 
             sql = f"""select pfs_visit_id FROM visit_set INNER JOIN iic_sequence ON """ \
                   """visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \
                   f"""WHERE iic_sequence.sequence_type = 'agFocusSweep' and pfs_visit_id={visitId}"""
 
-            if not len(sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb)):
+            if not len(agUtils.AgPlot.opdb.query_dataframe(sql)):
                 return dict(skipPlotting=True, newValue=newValue)
 
         sql = """SELECT max(pfs_visit_id) FROM visit_set INNER JOIN iic_sequence """ \
               """ON visit_set.iic_sequence_id = iic_sequence.iic_sequence_id """ \
               """WHERE iic_sequence.sequence_type = 'agFocusSweep'"""
 
-        lastFocusVisit = sysUtils.pd_read_sql(sql, agUtils.AgPlot.opdb).squeeze()
+        lastFocusVisit = agUtils.AgPlot.opdb.query_dataframe(sql).squeeze()
 
         return dict(dataId=lastFocusVisit, newValue=newValue)
 
@@ -103,7 +102,7 @@ class FocusSweepPlot(agUtils.AgPlot):
 
         AGC = [1, 2, 3, 4, 5, 6]
 
-        guiders.plotFocus(self.opdb, visits, AGC=AGC, plotBy=plotBy,
+        guiders.plotFocus(self.getConn(), visits, AGC=AGC, plotBy=plotBy,
                           colorBy=colorBy,
                           showAGActorFocus=showAGActorFocus,
                           showOpdbFocus=showOpdbFocus,
