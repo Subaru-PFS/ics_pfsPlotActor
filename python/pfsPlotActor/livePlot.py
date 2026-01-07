@@ -3,6 +3,7 @@ from collections.abc import Iterable
 
 import matplotlib as mpl
 import psycopg2
+from pfs.utils.database import opdb
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 
@@ -49,7 +50,8 @@ class LivePlot(object):
         Returns:
         conn: A PostgreSQL connection object.
         """
-        return psycopg2.connect("dbname='opdb' host='db-ics' port=5432 user='pfs'")
+        #return psycopg2.connect("dbname='opdb' host='db-ics' port=5432 user='pfs'")
+        return opdb.OpDB().connect()
 
     def initialize(self):
         """Initialize your axes"""
