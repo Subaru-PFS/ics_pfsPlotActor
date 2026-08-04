@@ -126,7 +126,7 @@ class FocusSweepPlot(agUtils.AgPlot):
                           mmToMicrons=mmToMicrons,
                           useM2Off3=useM2Off3,
                           forceAlpha=forceAlpha,
-                          figure=self.fig, axes=self.axes)
+                          figure=self.fig, axes=agUtils.AxesGrid(self.axes))
 
         self.fig.tight_layout()
 

@@ -110,8 +110,8 @@ class FocusPlot(agUtils.AgPlot):
         visitStart = visitEnd + visitStart if visitStart < 0 else visitStart
         visits = list(range(visitStart, visitEnd + 1))
 
-        showAGActorFocus = False
-        showOpdbFocus = True
+        showAGActorFocus = True
+        showOpdbFocus = False
         showFWHM = False
 
         magMin = None if magMin == 'None' else float(magMin)
@@ -151,7 +151,7 @@ class FocusPlot(agUtils.AgPlot):
         useAgcData = self.agcData if useCache else None
 
         agcData = guiders.plotFocus(self.getConn(), visits, agcData=useAgcData, AGC=AGC,
-                                    **plotParams, figure=self.fig, axes=self.axes)
+                                    **plotParams, figure=self.fig, axes=agUtils.AxesGrid(self.axes))
 
         self.fig.tight_layout()
 

@@ -1,6 +1,37 @@
+import numpy as np
 import pfs.drp.stella.utils.guiders as guiders
 import pfsPlotActor.livePlot as livePlot
 from pfs.utils.database import opdb as opdbIO
+
+
+class AxesGrid:
+    """Present a flat list of Axes as the (nRows, 1) grid that guiders.plotFocus expects.
+
+    The deployed drp_stella weekly's guiders.plotFocus is inconsistent about axes
+    dimensionality: it indexes ``axes[i, j]`` (2-D) for plotting but also does
+    ``for ax in axes`` / ``axes.flatten()`` in its helpers (overplotFocusSets,
+    showVisitBoundaries, ShowFocusFit), which expect a flat sequence of Axes. A plain
+    ndarray cannot satisfy both. This wrapper is 2-D-indexable yet iterates and flattens
+    as individual Axes. Assumes a single column (the actor never uses plotPerCamera).
+    """
+
+    def __init__(self, axes):
+        self._axes = list(axes)
+        self.shape = (len(self._axes), 1)
+
+    def __getitem__(self, key):
+        # 2-D access axes[i, j] -> row i (single column); int access axes[i] -> Axes i.
+        i = key[0] if isinstance(key, tuple) else key
+        return self._axes[i]
+
+    def __iter__(self):
+        return iter(self._axes)
+
+    def __len__(self):
+        return len(self._axes)
+
+    def flatten(self):
+        return np.array(self._axes, dtype=object)
 
 
 class AgPlot(livePlot.LivePlot):
