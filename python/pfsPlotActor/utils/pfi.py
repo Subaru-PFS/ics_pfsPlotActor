@@ -16,12 +16,10 @@ class ConvergencePlot(livePlot.LivePlot):
     pfsDesign = None
     opdb = opdbIO.OpDB()
 
-    def updateColorbar(self, key, ax, mappable, label=None, location='top'):
+    def updateColorbar(self, key, ax, mappable, label=None, location='right'):
         """Create the colorbar named ``key`` beside ``ax``, or refresh it in place.
 
         Keyed so a figure with several maps keeps one persistent colorbar each across redraws.
-        Laid over the map by default: a bar down the side costs width, which a row of panels
-        cannot spare, while a square map leaves room above.
         """
         colorbars = getattr(self, '_colorbars', None)
         if colorbars is None:
@@ -66,18 +64,23 @@ class ConvergencePlot(livePlot.LivePlot):
     def decorateTitles(self, headings, shown=None):
         """Two levels of title: figure = the run, subfigure = the quantity it shows.
 
-        Panels are left untitled: the colorbar sits where a panel title would go, and the axis
-        labels already say which of a pair is the map and which the distribution. ``headings``
-        pairs with self.subFigs; ``shown`` is the (visit, iteration) on display, or None when
-        nothing was drawn.
+        ``headings`` pairs with self.subFigs; ``shown`` is the (visit, iteration) on display,
+        or None when nothing was drawn. Panel titles are left alone, so a panel is free to
+        title itself.
         """
-        for ax in self.axes:
-            ax.set_title("")
-
         for subFig, heading in zip(self.subFigs, headings):
-            subFig.suptitle(heading, fontweight='bold', fontsize=13)
+            # left aligned and spanning the subfigure, so a heading can carry lines of numbers.
+            subFig.suptitle(heading, x=0.01, ha='left', fontsize=13)
 
         self.fig.suptitle(self.runTitle(*shown) if shown else "", fontsize=14)
+
+    @staticmethod
+    def boldText(text):
+        """``text`` as mathtext bold, to weight part of a title whose rest is plain.
+
+        Spaces and percent signs are escaped, being mathtext markup rather than characters.
+        """
+        return f"$\\bf{{{text.replace('%', chr(92) + '%').replace(' ', chr(92) + ' ')}}}$"
 
     def runTitle(self, visitId, iteration):
         """When the visit ran, how long it took, and the design it was observing.
@@ -201,13 +204,19 @@ class ConvergencePlot(livePlot.LivePlot):
 
         return started, elapsed
 
+    # what fps converges to when pfs_config does not say.
+    defaultConvergThreshold = 50
+
     @staticmethod
     def loadConvergThreshold(visitId):
-        """Distance [microns] within which a science fiber counts as converged, or None if unset."""
+        """Distance [microns] within which a science fiber counts as converged.
+
+        Falls back to defaultConvergThreshold for a visit whose pfs_config does not record it.
+        """
         sql = f'select converg_distance_threshold from pfs_config where visit0={int(visitId)}'
         df = ConvergencePlot.opdb.query_dataframe(sql)
         if not len(df) or df.converg_distance_threshold.isna().all():
-            return None
+            return ConvergencePlot.defaultConvergThreshold
         return 1e3 * float(df.converg_distance_threshold.iloc[0])
 
     @staticmethod

@@ -23,7 +23,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         shown = self.drawConvergence(self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
                                      nIter=nIter, vmin=vmin, vmax=vmax, bins=bins, minIter=minIter,
                                      showPercentiles=showPercentiles, showCumulative=showCumulative)
-        self.decorateTitles(("Distance to target",), shown)
+        self.decorateTitles((self.distanceHeading(),), shown)
         return bool(shown)
 
     def drawConvergence(self, ax1, ax2, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30,
@@ -34,6 +34,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         owns the figure, its layout and its titles. Returns the (visit, iteration) drawn, or
         None when there is nothing to show.
         """
+        self.convergenceSummary = self.convergenceSpread = ""
         # Get convergence dataframe default is latest.
         convergeData = self.selectData(latestVisitId, visitId=visitId)
         if not len(convergeData):
@@ -140,11 +141,9 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         else:
             self.cumAxis.set_yticks([])
 
-        # statistics box on the map's empty corner.
-        threshold = self.loadConvergThreshold(visitId)
-        ax1.text(0.02, 0.02, self.statsText(stats, dist, percentiles, threshold),
-                 transform=ax1.transAxes, va='bottom', ha='left', fontsize=8, family='monospace',
-                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
+        # read under the heading, which spans both panels rather than crowding either one.
+        self.convergenceSpread = self.spreadText(dist, percentiles)
+        self.convergenceSummary = self.statsText(stats, self.loadConvergThreshold(visitId))
 
         return int(visitId), int(shownIter)
 
@@ -167,56 +166,73 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
     def convergenceStats(self, finalData):
         """Convergence bookkeeping for the shown iteration, by cobra role.
 
-        converging and toDot come from cobra_command (CONVERGE / BLACK_DOT), or on legacy
-        configs without it from target type. notConverged is read from fiber_status; hidden
-        counts the dot cobras with no measured final position (undetected behind the dot).
+        converging, toDot and broken come from cobra_command (CONVERGE / BLACK_DOT /
+        NOT_COMMANDED), so they partition the cobras and report what fps decided for this
+        visit rather than the calibration the client running this happens to have. A legacy
+        config carries no cobra_command; there the roles come from target type and the broken
+        count from COBRA_OK_MASK. notConverged is read from fiber_status; hidden counts the
+        dot cobras with no measured final position (undetected behind the dot).
         """
-        good = finalData.loc[self.goodIdx]
-        fiberStatus = good.fiberStatus
-        if (good.cobraCommand == CobraCommand.CONVERGE).any():
-            converging = good.cobraCommand == CobraCommand.CONVERGE
-            toDot = good.cobraCommand == CobraCommand.BLACK_DOT
+        if (finalData.cobraCommand == CobraCommand.CONVERGE).any():
+            rows = finalData
+            converging = rows.cobraCommand == CobraCommand.CONVERGE
+            toDot = rows.cobraCommand == CobraCommand.BLACK_DOT
+            broken = int((rows.cobraCommand == CobraCommand.NOT_COMMANDED).sum())
         else:
-            converging = (good.targetType != TargetType.UNASSIGNED) & (fiberStatus != FiberStatus.MASKED)
-            toDot = good.targetType == TargetType.BLACKSPOT
+            rows = finalData.loc[self.goodIdx]
+            converging = ((rows.targetType != TargetType.UNASSIGNED)
+                          & (rows.fiberStatus != FiberStatus.MASKED))
+            toDot = rows.targetType == TargetType.BLACKSPOT
+            broken = len(self.badIdx)
+
         return {'converging': int(converging.sum()),
-                'notConverged': int((fiberStatus[converging] == FiberStatus.NOTCONVERGED).sum()),
+                'notConverged': int((rows.fiberStatus[converging] == FiberStatus.NOTCONVERGED).sum()),
                 'toDot': int(toDot.sum()),
-                'hidden': int((toDot & good.notDetected).sum()),
-                'broken': len(self.badIdx)}
+                'hidden': int((toDot & rows.notDetected).sum()),
+                'broken': broken}
 
-    @staticmethod
-    def statsText(stats, dist, percentiles, threshold=None):
-        """Summary grouped by cobra role. converging, toDot and broken partition the cobras
-        (they should sum to the cobra count); the convergence numbers hang under converging.
+    def spreadText(self, dist, percentiles):
+        """Median and the requested percentiles of the distance to target, in microns."""
+        if not len(dist):
+            return ''
+        spread = [f'median: {self.boldText(f"{np.median(dist):.1f} µm")}']
+        spread.extend(f'{perc}th: {self.boldText(f"{value:.1f} µm")}' for perc, value
+                      in zip(percentiles, np.percentile(dist, percentiles)))
+        return '   '.join(spread)
+
+    def statsText(self, stats, threshold):
+        """The cobras that fell short, each over the total of the role it belongs to.
+
+        Converging, black dot and broken partition the cobras, so the two denominators and
+        BROKENCOBRA sum to the cobra count. ``threshold`` is in microns, and NOTCONVERGED is
+        the fiber status, so it counts the cobras that ended further than that from their
+        target. BLACKDOT counts the dot cobras that went undetected behind their dot. The
+        counts are bold and the labels plain, so the eye lands on the numbers.
         """
-        def frac(n, d):
-            return f' ({100 * n / d:.0f}%)' if d else ''
+        def over(n, d):
+            return self.boldText(f'{n}/{d} ({100 * n / d:.0f}%)' if d else f'{n}')
 
-        notConvLabel = f'notConverged(<{threshold:.0f}um)' if threshold is not None else 'notConverged'
-        lines = [f'converging: {stats["converging"]}']
-        if len(dist):
-            lines.append(f'    median: {np.median(dist):.1f} um')
-            for perc, value in zip(percentiles, np.percentile(dist, percentiles)):
-                lines.append(f'    {perc}th: {value:.1f} um')
-        lines.append(f'    {notConvLabel}: {stats["notConverged"]}'
-                     f'{frac(stats["notConverged"], stats["converging"])}')
-        lines.append('')
-        lines.append(f'to dot: {stats["toDot"]}')
-        lines.append(f'    hidden: {stats["hidden"]}{frac(stats["hidden"], stats["toDot"])}')
-        lines.append(f'broken: {stats["broken"]}')
-        return '\n'.join(lines)
+        return (f'NOTCONVERGED(>{threshold:.0f}µm): {over(stats["notConverged"], stats["converging"])}   '
+                f'BLACKDOT: {over(stats["hidden"], stats["toDot"])}   '
+                f'BROKENCOBRA: {self.boldText(str(stats["broken"]))}')
+
+    def distanceHeading(self):
+        """The quantity name, with its spread alongside and the cobra counts underneath."""
+        heading = self.boldText("Distance to target")
+        if self.convergenceSpread:
+            heading = f'{heading}   {self.convergenceSpread}'
+        return f'{heading}\n{self.convergenceSummary}' if self.convergenceSummary else heading
 
     def selectMovingCobras(self, iterData):
         """Cobras driven to converge on a science target, the ones the statistics are about.
 
         cobra_command CONVERGE, or on legacy configs without it, assigned non-masked science
-        cobras. Black-dot and broken cobras are counted separately and left out: their
+        cobras. Black-dot and uncommanded cobras are counted separately and left out: their
         distance to target is not a convergence measure.
         """
-        iterData = iterData.loc[self.goodIdx]
         if (iterData.cobraCommand == CobraCommand.CONVERGE).any():
-            keep = iterData.cobraCommand == CobraCommand.CONVERGE
-        else:
-            keep = (iterData.targetType != TargetType.UNASSIGNED) & (iterData.fiberStatus != FiberStatus.MASKED)
+            return iterData[iterData.cobraCommand == CobraCommand.CONVERGE]
+
+        iterData = iterData.loc[self.goodIdx]
+        keep = (iterData.targetType != TargetType.UNASSIGNED) & (iterData.fiberStatus != FiberStatus.MASKED)
         return iterData[keep]

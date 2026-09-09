@@ -49,5 +49,6 @@ class ConvergenceAndFiducials(convergenceMapHist.ConvergenceMapHist):
                                                       showDisplacementAsArrow=showDisplacementAsArrow,
                                                       bins=binsRMS, arrowSize=arrowSize)
         # the convergence panels set the run on display; the fiducial RMS spans the whole run.
-        self.decorateTitles(("Distance to target", "Position RMS"), convergence)
+        self.decorateTitles((self.distanceHeading(), self.boldText("Position RMS")),
+                            convergence)
         return bool(convergence or fiducials)

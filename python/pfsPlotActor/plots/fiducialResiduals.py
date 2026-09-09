@@ -158,5 +158,5 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
         shown = drawFiducialRMS(self, self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
                                 vmin=vmin, vmax=vmax, addBrokenCobras=addBrokenCobras,
                                 showDisplacementAsArrow=showDisplacementAsArrow, bins=bins, arrowSize=arrowSize)
-        self.decorateTitles(("Position RMS",), shown)
+        self.decorateTitles((self.boldText("Position RMS"),), shown)
         return bool(shown)
