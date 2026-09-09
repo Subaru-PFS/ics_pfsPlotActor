@@ -15,25 +15,24 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
     def initialize(self):
         """Initialize your axes and colorbar"""
         self.cumAxis = None
-        ax1 = self.fig.add_subplot(121)
-        ax2 = self.fig.add_subplot(122)
-        return [ax1, ax2]
+        return list(self.singleSubFigure().subplots(1, 2, width_ratios=[1.0, 0.85]))
 
     def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3,
              showPercentiles='75,95', showCumulative=False):
         """Plot the latest dataset."""
-        plotted = self.drawConvergence(self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
-                                       nIter=nIter, vmin=vmin, vmax=vmax, bins=bins, minIter=minIter,
-                                       showPercentiles=showPercentiles, showCumulative=showCumulative)
-        self.fig.tight_layout()
-        return plotted
+        shown = self.drawConvergence(self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
+                                     nIter=nIter, vmin=vmin, vmax=vmax, bins=bins, minIter=minIter,
+                                     showPercentiles=showPercentiles, showCumulative=showCumulative)
+        self.decorateTitles(("Distance to target",), shown)
+        return bool(shown)
 
     def drawConvergence(self, ax1, ax2, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30,
                         bins=30, minIter=3, showPercentiles='75,95', showCumulative=False):
         """Draw the convergence map on ax1 and the per-iteration distance histogram on ax2.
 
         Shared by the standalone plot and the combined convergence/fiducials plot; the caller
-        owns the figure and its layout.
+        owns the figure, its layout and its titles. Returns the (visit, iteration) drawn, or
+        None when there is nothing to show.
         """
         # Get convergence dataframe default is latest.
         convergeData = self.selectData(latestVisitId, visitId=visitId)
@@ -42,17 +41,11 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
 
         [visitId] = convergeData.pfs_visit_id.unique()
         maxIter = int(convergeData.iteration.max())
-        # Number iterations from the last frame back, anchored to the allocated convergence
-        # count (converg_num_iter, clamped to what actually ran). offset absorbs the goHome
-        # home frame (0 when goHome, -1 otherwise) without having to detect it, keeping the
-        # title, minIter cut and legend on the same 1-based convergence numbering.
-        numIter = self.loadConvergNumIter(visitId)
-        nRan = convergeData.iteration.nunique()
-        convCount = nRan if numIter is None else min(numIter, nRan)
-        offset = maxIter - convCount
+        # offset puts the title, the minIter cut and the legend on 1-based convergence numbering.
+        __, offset = self.convergenceCount(convergeData, visitId)
         if nIter == -1:
             nIter = maxIter
-        titleIter = nIter - offset
+        shownIter = nIter - offset
 
         iterData = convergeData.query(f'iteration=={nIter}').reset_index(drop=True)
         if iterData.empty:
@@ -80,11 +73,10 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
                          calibModel.centers.imag[moving['cobra_id'].values - 1],
                          c=dist, marker='o', s=20, vmin=vmin, vmax=vmax)
 
-        self.updateColorbar('convergence', ax1, sc)
+        self.updateColorbar('convergence', ax1, sc, label='μm')
 
         ax1.set_xlabel("X (mm)")
         ax1.set_ylabel("Y (mm)")
-        ax1.set_title(f'Convergence: visit {visitId:d}, iter {titleIter:d}')
         ax1.set_aspect('equal')
         ax1.format_coord = self.cobraIdFiberIdFormatter
 
@@ -96,21 +88,25 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
             ax2.hist(self.distToTarget(group), alpha=0.6, histtype='step', linewidth=3,
                      label=f'{iterVal - offset}-th Iteration', bins=bins, range=(vmin, vmax), color=cmap[i])
 
-        ax2.set_title("Distance to target")
         ax2.set_xlabel("Distance (microns)")
         ax2.set_ylabel("N")
         ax2.set_xlim(vmin, vmax)
-        ax2.grid()
+        # horizontal gridlines are worth more read against the cumulative percentage than
+        # against the bin counts, so the cumulative axis carries them when it is shown.
+        ax2.grid(axis='x')
+        ax2.grid(axis='y', visible=not showCumulative)
 
         # percentiles of the shown iteration, guarded to [0, 100].
         percentiles = self.parsePercentiles(showPercentiles)
-        ymin, ymax = ax2.get_ylim()
         if len(dist) and percentiles:
             for value, perc in zip(np.percentile(dist, percentiles), percentiles):
                 color = 'r' if perc >= 95 and value > 10 else 'k'
-                ax2.vlines(value, ymin, ymax, label=f'{perc}th : {value:.1f} microns', color=color, alpha=0.5)
+                # axvline spans the axes whatever the y limit ends up being.
+                ax2.axvline(value, label=f'{perc}th : {value:.1f} microns', color=color, alpha=0.5)
 
-        ax2.legend(loc='upper right', fontsize=8)
+        # Upper left, above the peak: the cumulative curve plateaus in the upper right and the
+        # distribution tail runs along the bottom.
+        self.makeRoomForLegend(ax2, ax2.legend(loc='upper left', fontsize=8, framealpha=0.8))
 
         # cumulative distribution of the shown iteration on a twin axis.
         if self.cumAxis is None:
@@ -120,11 +116,27 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         self.cumAxis.yaxis.set_label_position("right")
         self.cumAxis.yaxis.tick_right()
         self.cumAxis.set_ylim(0, 100)
+        # keep the twin under the histogram, which being the newer axes it would cover.
+        self.cumAxis.set_zorder(ax2.get_zorder() - 1)
+        ax2.patch.set_visible(False)
         if showCumulative and len(dist):
             xs = np.sort(dist)
             ys = 100 * np.arange(1, len(xs) + 1) / len(xs)
-            self.cumAxis.plot(xs, ys, color='0.2', linewidth=1.5)
-            self.cumAxis.set_ylabel("cumulative %")
+            # One muted line, behind the steps: filling under it would compete with the
+            # histogram for the same area. The right axis is coloured to match, so which of
+            # the two scales the curve belongs to needs no legend entry.
+            cumulativeColor = '0.35'
+            self.cumAxis.plot(xs, ys, color=cumulativeColor, linewidth=1.4, zorder=0)
+            # The tail runs far past the histogram, so the curve leaves the panel below 100%.
+            # Spell out where it actually is at the edge, which flattening near the top hides.
+            reached = 100 * np.mean(dist <= vmax)
+            self.cumAxis.annotate(f'{reached:.0f}% < {vmax:.0f}um', xy=(vmax, reached),
+                                  xytext=(-4, -4), textcoords='offset points', ha='right', va='top',
+                                  fontsize=8, color=cumulativeColor)
+            self.cumAxis.set_ylabel("cumulative %", color=cumulativeColor)
+            self.cumAxis.tick_params(axis='y', colors=cumulativeColor)
+            self.cumAxis.spines['right'].set_color(cumulativeColor)
+            self.cumAxis.grid(axis='y', color=cumulativeColor, alpha=0.35, linewidth=0.7)
         else:
             self.cumAxis.set_yticks([])
 
@@ -134,7 +146,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
                  transform=ax1.transAxes, va='bottom', ha='left', fontsize=8, family='monospace',
                  bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
 
-        return True
+        return int(visitId), int(shownIter)
 
     @staticmethod
     def parsePercentiles(showPercentiles):

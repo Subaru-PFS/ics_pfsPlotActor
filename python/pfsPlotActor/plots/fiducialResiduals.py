@@ -68,7 +68,8 @@ def drawFiducialRMS(plot, ax1, ax2, latestVisitId, visitId=-1, vmin=0, vmax=15, 
 
     A free function so both FiducialResiduals and the combined plot can call it; ``plot`` is the
     LivePlot providing selectData, getFiducialData, updateColorbar and cobraIdFiberIdFormatter.
-    The caller owns the figure and its layout.
+    The caller owns the figure, its layout and its titles. Returns the (visit, iteration count)
+    the RMS was computed over, or None when there is nothing to show.
 
     vmin, vmax : colorbar limits (microns). addBrokenCobras: also show broken cobras.
     showDisplacementAsArrow: overlay displacement vectors. bins: histogram bins. arrowSize:
@@ -79,7 +80,7 @@ def drawFiducialRMS(plot, ax1, ax2, latestVisitId, visitId=-1, vmin=0, vmax=15, 
         return
 
     [visitId] = convergeData.pfs_visit_id.unique()
-    nIter = convergeData.iteration.max()
+    convCount, __ = plot.convergenceCount(convergeData, visitId)
 
     fidsData = plot.getFiducialData(visitId)
     if not len(fidsData):
@@ -103,7 +104,7 @@ def drawFiducialRMS(plot, ax1, ax2, latestVisitId, visitId=-1, vmin=0, vmax=15, 
         Q = ax1.quiver(fiducialRMS.x_mm, fiducialRMS.y_mm, fiducialRMS.dx, fiducialRMS.dy, alpha=0.5, scale=scale)
         ax1.quiverkey(Q, X=0.85, Y=0.1, U=arrowSize, label=f'{arrowSize} microns', labelpos='E', coordinates='axes')
 
-    plot.updateColorbar('fiducial', ax1, sc)
+    plot.updateColorbar('fiducial', ax1, sc, label='μm')
 
     fiducialMedianRMS = fiducialRMS.rms.median()
     ax2.hist(fiducialRMS.rms, bins=bins, range=(vmin, vmax), alpha=0.7)
@@ -123,17 +124,15 @@ def drawFiducialRMS(plot, ax1, ax2, latestVisitId, visitId=-1, vmin=0, vmax=15, 
 
     ax1.set_xlabel("X (mm)")
     ax1.set_ylabel("Y (mm)")
-    ax1.set_title(f'Fiducial RMS: visit {visitId:d}, {nIter:d} iter')
     ax1.set_aspect('equal')
     ax1.format_coord = plot.cobraIdFiberIdFormatter
 
-    ax2.legend()
+    ax2.legend(fontsize=8)
     ax2.set_xlabel('RMS (microns)')
     ax2.set_ylabel("N")
-    ax2.set_title("RMS distribution")
     ax2.grid(True, linestyle='--', alpha=0.6)
 
-    return True
+    return int(visitId), convCount
 
 
 class FiducialResiduals(pfiUtils.ConvergencePlot):
@@ -143,15 +142,14 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
 
     def initialize(self):
         """Initialize plot axes and colorbar."""
-        ax1 = self.fig.add_subplot(121)  # Scatter plot of residuals
-        ax2 = self.fig.add_subplot(122)  # Histogram of RMS
-        return [ax1, ax2]
+        # map of the residuals, then the histogram of their RMS.
+        return list(self.singleSubFigure().subplots(1, 2, width_ratios=[1.0, 0.85]))
 
     def plot(self, latestVisitId, visitId=-1, vmin=0, vmax=15, addBrokenCobras=False,
              showDisplacementAsArrow=False, bins=20, arrowSize='auto'):
         """Plot the latest dataset."""
-        plotted = drawFiducialRMS(self, self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
-                                  vmin=vmin, vmax=vmax, addBrokenCobras=addBrokenCobras,
-                                  showDisplacementAsArrow=showDisplacementAsArrow, bins=bins, arrowSize=arrowSize)
-        self.fig.tight_layout()
-        return plotted
+        shown = drawFiducialRMS(self, self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
+                                vmin=vmin, vmax=vmax, addBrokenCobras=addBrokenCobras,
+                                showDisplacementAsArrow=showDisplacementAsArrow, bins=bins, arrowSize=arrowSize)
+        self.decorateTitles(("Position RMS",), shown)
+        return bool(shown)

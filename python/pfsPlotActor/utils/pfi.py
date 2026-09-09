@@ -1,6 +1,5 @@
 import numpy as np
 import pfsPlotActor.livePlot as livePlot
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from pfs.datamodel import PfsDesign
 from pfs.utils.database import opdb as opdbIO
 from pfsPlotActor.utils.sgfm import sgfm
@@ -17,19 +16,103 @@ class ConvergencePlot(livePlot.LivePlot):
     pfsDesign = None
     opdb = opdbIO.OpDB()
 
-    def updateColorbar(self, key, ax, mappable):
-        """Create the colorbar named ``key`` on the right of ``ax``, or refresh it in place.
+    def updateColorbar(self, key, ax, mappable, label=None, location='top'):
+        """Create the colorbar named ``key`` beside ``ax``, or refresh it in place.
 
         Keyed so a figure with several maps keeps one persistent colorbar each across redraws.
+        Laid over the map by default: a bar down the side costs width, which a row of panels
+        cannot spare, while a square map leaves room above.
         """
         colorbars = getattr(self, '_colorbars', None)
         if colorbars is None:
             colorbars = self._colorbars = {}
         if key not in colorbars:
-            cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
-            colorbars[key] = self.fig.colorbar(mappable, cax=cax)
+            # ax.get_figure() so an axes living in a subfigure gets its colorbar there.
+            colorbars[key] = ax.get_figure().colorbar(mappable, ax=ax, fraction=0.046, pad=0.02,
+                                                      location=location, label=label)
         else:
             colorbars[key].update_normal(mappable)
+
+    @staticmethod
+    def makeRoomForLegend(legendAxes, legend, pad=0.05):
+        """Raise the y limit of ``legendAxes`` until the plotted data clears ``legend``.
+
+        A legend pinned to a corner overlaps whatever is drawn there; stretching the axis
+        instead of moving the legend keeps the corner it was given. ``pad`` is the gap left
+        below the legend, as a fraction of the axes height. Does nothing when the legend
+        cannot be measured, or when it already covers most of the height.
+        """
+        figure = legendAxes.get_figure()
+        try:
+            renderer = figure.canvas.get_renderer()
+        except AttributeError:
+            return
+
+        # legend height as a fraction of the axes, so it stays valid across y limits.
+        legendBox = legend.get_window_extent(renderer).transformed(legendAxes.transAxes.inverted())
+        below = 1 - legendBox.height - pad
+        if below <= 0.1:
+            return
+
+        ymin, ymax = legendAxes.get_ylim()
+        legendAxes.set_ylim(ymin, ymin + (ymax - ymin) / below)
+
+    def singleSubFigure(self):
+        """One full-figure subfigure, so a single-quantity plot titles itself like a multi one."""
+        self.fig.set_layout_engine('constrained')
+        self.subFigs = self.fig.subfigures(1, 1, squeeze=False).ravel()
+        return self.subFigs[0]
+
+    def decorateTitles(self, headings, shown=None):
+        """Two levels of title: figure = the run, subfigure = the quantity it shows.
+
+        Panels are left untitled: the colorbar sits where a panel title would go, and the axis
+        labels already say which of a pair is the map and which the distribution. ``headings``
+        pairs with self.subFigs; ``shown`` is the (visit, iteration) on display, or None when
+        nothing was drawn.
+        """
+        for ax in self.axes:
+            ax.set_title("")
+
+        for subFig, heading in zip(self.subFigs, headings):
+            subFig.suptitle(heading, fontweight='bold', fontsize=13)
+
+        self.fig.suptitle(self.runTitle(*shown) if shown else "", fontsize=14)
+
+    def runTitle(self, visitId, iteration):
+        """When the visit ran, how long it took, and the design it was observing.
+
+        Kept terse so it holds a single line down to an 11 inch window.
+        """
+        parts = [f"v{visitId}"]
+
+        startedAt, elapsed = self.loadConvergTiming(visitId)
+        if startedAt is not None:
+            parts.append(startedAt.strftime('%Y-%m-%d %H:%M'))
+        parts.append(f"nIter={iteration}")
+        if elapsed is not None:
+            perIteration = f", {elapsed / iteration:.0f}s/iter" if iteration else ""
+            parts.append(f"{elapsed:.0f}s{perIteration}")
+
+        designId, designName = self.loadDesign(visitId)
+        if designId is not None:
+            parts.append(f"0x{designId:016x}")
+        if designName:
+            parts.append(designName)
+        return " · ".join(parts)
+
+    def convergenceCount(self, convergeData, visitId):
+        """Number of convergence iterations in the run, and the offset from the raw index.
+
+        The raw iteration index can carry a leading frame that is not a convergence step (a
+        goHome, or the exposure after a blind move). Anchoring to the allocated count
+        (converg_num_iter, clamped to what actually ran) absorbs it without having to detect
+        it, so subtracting the offset gives 1-based convergence numbering.
+        """
+        numIter = self.loadConvergNumIter(visitId)
+        nRan = convergeData.iteration.nunique()
+        convCount = nRan if numIter is None else min(numIter, nRan)
+        return convCount, int(convergeData.iteration.max()) - convCount
 
     @staticmethod
     def cobraIdFiberIdFormatter(x, y):
@@ -85,6 +168,38 @@ class ConvergencePlot(livePlot.LivePlot):
         if not len(df) or df.converg_num_iter.isna().all():
             return None
         return int(df.converg_num_iter.iloc[0])
+
+    @staticmethod
+    def loadDesign(visitId):
+        """The design id and name behind the visit, or (None, None) when there is no design."""
+        sql = ('select pv.pfs_design_id, pd.design_name from pfs_visit pv '
+               'join pfs_design pd on pd.pfs_design_id = pv.pfs_design_id '
+               f'where pv.pfs_visit_id = {int(visitId)}')
+        df = ConvergencePlot.opdb.query_dataframe(sql)
+        if not len(df):
+            return None, None
+        # the id is stored signed, but it is always shown as a 64 bit hex.
+        return int(df.pfs_design_id.iloc[0]) & (2 ** 64 - 1), df.design_name.iloc[0]
+
+    @staticmethod
+    def loadConvergTiming(visitId):
+        """When the convergence started and how long it took, either None if not recorded.
+
+        The start is the first MCS frame of the visit. The duration is what fps recorded for the
+        run, which is longer than the span between frames since it covers the moves either side.
+        """
+        visitId = int(visitId)
+        frames = ConvergencePlot.opdb.query_dataframe(
+            f'select min(taken_at) as started_at from mcs_exposure '
+            f'where mcs_frame_id between {visitId * 100} and {visitId * 100 + 99}')
+        started = frames.started_at.iloc[0] if len(frames) and not frames.started_at.isna().all() else None
+
+        config = ConvergencePlot.opdb.query_dataframe(
+            f'select converg_elapsed_time from pfs_config where visit0={visitId}')
+        elapsed = float(config.converg_elapsed_time.iloc[0]) \
+            if len(config) and not config.converg_elapsed_time.isna().all() else None
+
+        return started, elapsed
 
     @staticmethod
     def loadConvergThreshold(visitId):

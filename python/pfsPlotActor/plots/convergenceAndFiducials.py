@@ -19,13 +19,21 @@ class ConvergenceAndFiducials(convergenceMapHist.ConvergenceMapHist):
                  arrowSize='microns')
 
     def initialize(self):
-        """Four panels in a row: convergence map and histogram, then fiducial RMS map and histogram.
+        """Convergence map and histogram over the full height, fiducial RMS pair stacked beside.
 
-        Maps get more width than the histograms (16:9 screen).
+        One subfigure per quantity, so each carries its own heading and matplotlib keeps the two
+        pairs apart. The fiducial RMS is the sparser measurement, so it is stacked into a narrow
+        column and the convergence pair takes the width that frees. The constrained layout engine
+        re-runs on every draw, so the panels follow a window resize instead of holding the
+        geometry they were first drawn with.
         """
         self.cumAxis = None
-        gridSpec = self.fig.add_gridspec(1, 4, width_ratios=[1.0, 0.75, 1.0, 0.75])
-        return [self.fig.add_subplot(gridSpec[0, i]) for i in range(4)]
+        self.fig.set_layout_engine('constrained')
+        self.subFigs = self.fig.subfigures(1, 2, width_ratios=[3.0, 1.0], wspace=0.02)
+
+        axes = list(self.subFigs[0].subplots(1, 2, width_ratios=[1.0, 0.85]))
+        axes.extend(self.subFigs[1].subplots(2, 1, height_ratios=[1.6, 1.0]))
+        return axes
 
     def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3,
              showPercentiles='75,95', showCumulative=False,
@@ -40,5 +48,6 @@ class ConvergenceAndFiducials(convergenceMapHist.ConvergenceMapHist):
                                                       addBrokenCobras=addBrokenCobras,
                                                       showDisplacementAsArrow=showDisplacementAsArrow,
                                                       bins=binsRMS, arrowSize=arrowSize)
-        self.fig.tight_layout()
+        # the convergence panels set the run on display; the fiducial RMS spans the whole run.
+        self.decorateTitles(("Distance to target", "Position RMS"), convergence)
         return bool(convergence or fiducials)
