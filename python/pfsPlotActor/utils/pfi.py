@@ -1,5 +1,6 @@
 import numpy as np
 import pfsPlotActor.livePlot as livePlot
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from pfs.datamodel import PfsDesign
 from pfs.utils.database import opdb as opdbIO
 from pfsPlotActor.utils.sgfm import sgfm
@@ -15,6 +16,20 @@ class ConvergencePlot(livePlot.LivePlot):
 
     pfsDesign = None
     opdb = opdbIO.OpDB()
+
+    def updateColorbar(self, key, ax, mappable):
+        """Create the colorbar named ``key`` on the right of ``ax``, or refresh it in place.
+
+        Keyed so a figure with several maps keeps one persistent colorbar each across redraws.
+        """
+        colorbars = getattr(self, '_colorbars', None)
+        if colorbars is None:
+            colorbars = self._colorbars = {}
+        if key not in colorbars:
+            cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
+            colorbars[key] = self.fig.colorbar(mappable, cax=cax)
+        else:
+            colorbars[key].update_normal(mappable)
 
     @staticmethod
     def cobraIdFiberIdFormatter(x, y):

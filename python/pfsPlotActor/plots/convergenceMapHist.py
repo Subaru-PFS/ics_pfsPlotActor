@@ -3,7 +3,6 @@ from importlib import reload
 import matplotlib.pyplot as plt
 import numpy as np
 import pfsPlotActor.utils.pfi as pfiUtils
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from pfs.datamodel import TargetType, FiberStatus, CobraCommand
 from pfsPlotActor.utils.sgfm import calibModel
 
@@ -15,7 +14,6 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
 
     def initialize(self):
         """Initialize your axes and colorbar"""
-        self.colorbar = None
         self.cumAxis = None
         ax1 = self.fig.add_subplot(121)
         ax2 = self.fig.add_subplot(122)
@@ -24,9 +22,19 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
     def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3,
              showPercentiles='75,95', showCumulative=False):
         """Plot the latest dataset."""
-        fig = self.fig
-        ax1, ax2 = self.axes[0], self.axes[1]
+        plotted = self.drawConvergence(self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
+                                       nIter=nIter, vmin=vmin, vmax=vmax, bins=bins, minIter=minIter,
+                                       showPercentiles=showPercentiles, showCumulative=showCumulative)
+        self.fig.tight_layout()
+        return plotted
 
+    def drawConvergence(self, ax1, ax2, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30,
+                        bins=30, minIter=3, showPercentiles='75,95', showCumulative=False):
+        """Draw the convergence map on ax1 and the per-iteration distance histogram on ax2.
+
+        Shared by the standalone plot and the combined convergence/fiducials plot; the caller
+        owns the figure and its layout.
+        """
         # Get convergence dataframe default is latest.
         convergeData = self.selectData(latestVisitId, visitId=visitId)
         if not len(convergeData):
@@ -72,16 +80,11 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
                          calibModel.centers.imag[moving['cobra_id'].values - 1],
                          c=dist, marker='o', s=20, vmin=vmin, vmax=vmax)
 
-        if self.colorbar is None:
-            divider = make_axes_locatable(ax1)
-            cax = divider.append_axes("right", size="5%", pad=0.05)
-            self.colorbar = fig.colorbar(sc, cax=cax)
-        else:
-            self.colorbar.update_normal(sc)
+        self.updateColorbar('convergence', ax1, sc)
 
         ax1.set_xlabel("X (mm)")
         ax1.set_ylabel("Y (mm)")
-        ax1.set_title(f'Convergence Distance: pfsVisitId = {visitId:d}, iteration = {titleIter:d}')
+        ax1.set_title(f'Convergence: visit {visitId:d}, iter {titleIter:d}')
         ax1.set_aspect('equal')
         ax1.format_coord = self.cobraIdFiberIdFormatter
 
@@ -93,7 +96,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
             ax2.hist(self.distToTarget(group), alpha=0.6, histtype='step', linewidth=3,
                      label=f'{iterVal - offset}-th Iteration', bins=bins, range=(vmin, vmax), color=cmap[i])
 
-        ax2.set_title(f"Distance to Target: pfsVisitId = {visitId:d}")
+        ax2.set_title("Distance to target")
         ax2.set_xlabel("Distance (microns)")
         ax2.set_ylabel("N")
         ax2.set_xlim(vmin, vmax)
@@ -130,8 +133,6 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         ax1.text(0.02, 0.02, self.statsText(stats, dist, percentiles, threshold),
                  transform=ax1.transAxes, va='bottom', ha='left', fontsize=8, family='monospace',
                  bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
-
-        fig.tight_layout()
 
         return True
 
