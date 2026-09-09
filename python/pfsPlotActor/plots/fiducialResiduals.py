@@ -97,8 +97,15 @@ def drawFiducialRMS(plot, ax1, ax2, latestVisitId, visitId=-1, vmin=0, vmax=15, 
     sc = ax1.scatter(fiducialRMS.x_mm, fiducialRMS.y_mm, c=fiducialRMS.rms, marker='D', s=40, vmin=vmin, vmax=vmax)
 
     if showDisplacementAsArrow:
-        maxDisplacement = int(np.percentile(np.concatenate([rmsVal.dist.to_numpy() for rmsVal in merged]), 90))
-        arrowSize = maxDisplacement if arrowSize == 'auto' else int(arrowSize)
+        if arrowSize == 'auto':
+            # a fiducial that went undetected has no displacement, so it cannot set the scale.
+            displacement = np.concatenate([rmsVal.dist.to_numpy(dtype=float) for rmsVal in merged])
+            displacement = displacement[np.isfinite(displacement)]
+            arrowSize = int(np.percentile(displacement, 90)) if len(displacement) else 0
+        else:
+            arrowSize = int(arrowSize)
+        # quiver divides by the scale, so sub-micron displacements still need a whole micron.
+        arrowSize = max(arrowSize, 1)
         scale = 1000 * arrowSize / 100
 
         Q = ax1.quiver(fiducialRMS.x_mm, fiducialRMS.y_mm, fiducialRMS.dx, fiducialRMS.dy, alpha=0.5, scale=scale)
