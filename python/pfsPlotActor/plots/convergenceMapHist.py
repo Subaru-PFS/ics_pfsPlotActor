@@ -16,15 +16,16 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
     def initialize(self):
         """Initialize your axes and colorbar"""
         self.colorbar = None
-        ax1 = [self.fig.add_subplot(121)]
-        ax2 = [self.fig.add_subplot(122)]
-        return ax1 + ax2
+        self.cumAxis = None
+        ax1 = self.fig.add_subplot(121)
+        ax2 = self.fig.add_subplot(122)
+        return [ax1, ax2]
 
-    def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3, showPercentiles='75,95'):
+    def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3,
+             showPercentiles='75,95', showCumulative=False):
         """Plot the latest dataset."""
         fig = self.fig
-        ax1 = self.axes[0]
-        ax2 = self.axes[1]
+        ax1, ax2 = self.axes[0], self.axes[1]
 
         # Get convergence dataframe default is latest.
         convergeData = self.selectData(latestVisitId, visitId=visitId)
@@ -45,115 +46,164 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
             nIter = maxIter
         titleIter = nIter - offset
 
-        # filter the dataframe for the iteration value.
         iterData = convergeData.query(f'iteration=={nIter}').reset_index(drop=True)
         if iterData.empty:
             return
 
         pfsConfigDf = self.loadPfsConfigFromDB(visitId)
-        iterData = self.addPfsConfigInfo(iterData, pfsConfigDf)
+        finalData = self.addPfsConfigInfo(iterData, pfsConfigDf)
 
         # show broken cobras.
-        bad = iterData.loc[self.badIdx]
+        bad = finalData.loc[self.badIdx]
         ax1.scatter(calibModel.centers.real[bad['cobra_id'].values - 1],
                     calibModel.centers.imag[bad['cobra_id'].values - 1], marker='x', color='k', s=20,
                     alpha=0.5)
 
-        # show moving cobras.
-        iterData = self.selectMovingCobras(iterData)
+        stats = self.convergenceStats(finalData)
 
-        # calculate distance from targets at this iteration.
-        dx = iterData.pfi_center_x_mm - iterData.pfi_target_x_mm
-        dy = iterData.pfi_center_y_mm - iterData.pfi_target_y_mm
-        dist = np.hypot(dx, dy)
+        # cobras entering the statistics, and their distance to target at this iteration.
+        moving = self.selectMovingCobras(finalData)
+        dist = self.distToTarget(moving)
 
-        # converting to microns
-        dist *= 1000
+        vmin = float(dist.min()) if vmin == 'auto' else float(vmin)
+        vmax = float(dist.max()) if vmax == 'auto' else float(vmax)
 
-        vmin = min(dist) if vmin == 'auto' else float(vmin)
-        vmax = max(dist) if vmax == 'auto' else float(vmax)
-
-        sc = ax1.scatter(calibModel.centers.real[iterData['cobra_id'].values - 1],
-                         calibModel.centers.imag[iterData['cobra_id'].values - 1],
+        sc = ax1.scatter(calibModel.centers.real[moving['cobra_id'].values - 1],
+                         calibModel.centers.imag[moving['cobra_id'].values - 1],
                          c=dist, marker='o', s=20, vmin=vmin, vmax=vmax)
 
         if self.colorbar is None:
-            # creating new colorbar.
-            # cbar_ax = fig.add_axes([0.45, 0.15, 0.02, 0.7])
-            # self.colorbar = fig.colorbar(sc, cax=cbar_ax)
             divider = make_axes_locatable(ax1)
             cax = divider.append_axes("right", size="5%", pad=0.05)
             self.colorbar = fig.colorbar(sc, cax=cax)
-
         else:
-            # or update existing one.
             self.colorbar.update_normal(sc)
 
-        # some labels
         ax1.set_xlabel("X (mm)")
         ax1.set_ylabel("Y (mm)")
-
-        # label with the pfsvisit Id
-        tString = f'Convergence Distance: pfsVisitId = {visitId:d}, iteration = {titleIter:d}'
-        ax1.set_title(tString)
-
+        ax1.set_title(f'Convergence Distance: pfsVisitId = {visitId:d}, iteration = {titleIter:d}')
         ax1.set_aspect('equal')
         ax1.format_coord = self.cobraIdFiberIdFormatter
 
-        convergeData = convergeData.query(f'iteration>={minIter + offset}')
+        # per-iteration histograms.
+        histData = convergeData.query(f'iteration>={minIter + offset}')
+        cmap = plt.get_cmap('viridis')(np.linspace(1.0, 0, histData.iteration.nunique()))
+        for i, (iterVal, group) in enumerate(histData.groupby('iteration')):
+            group = self.selectMovingCobras(self.addPfsConfigInfo(group, pfsConfigDf).reset_index())
+            ax2.hist(self.distToTarget(group), alpha=0.6, histtype='step', linewidth=3,
+                     label=f'{iterVal - offset}-th Iteration', bins=bins, range=(vmin, vmax), color=cmap[i])
 
-        cmap = plt.get_cmap('viridis')
-        cmap = cmap(np.linspace(1.0, 0, len(convergeData.iteration.unique())))
-
-        for i, (iterVal, iterData) in enumerate(convergeData.groupby('iteration')):
-            iterData = self.addPfsConfigInfo(iterData, pfsConfigDf).reset_index()
-            # show moving cobras.
-            iterData = self.selectMovingCobras(iterData)
-
-            dx = iterData.pfi_center_x_mm - iterData.pfi_target_x_mm
-            dy = iterData.pfi_center_y_mm - iterData.pfi_target_y_mm
-            dist = np.hypot(dx, dy)
-            # converting to microns
-            dist *= 1000
-
-            n, bins, patches = ax2.hist(dist, alpha=0.6, histtype='step', linewidth=3,
-                                        label=f'{iterVal - offset}-th Iteration', bins=bins, range=(vmin, vmax),
-                                        color=cmap[i])
-
-        ax2.legend(loc='upper right')
         ax2.set_title(f"Distance to Target: pfsVisitId = {visitId:d}")
         ax2.set_xlabel("Distance (microns)")
         ax2.set_ylabel("N")
-        ax2.set_aspect('auto')
+        ax2.set_xlim(vmin, vmax)
         ax2.grid()
 
-        # adding percentiles
-        try:
-            showPercentiles = list(map(int, showPercentiles.split(',')))
-        except:
-            showPercentiles = [75, 95]
-
-        percentiles = np.percentile(dist, showPercentiles)
+        # percentiles of the shown iteration, guarded to [0, 100].
+        percentiles = self.parsePercentiles(showPercentiles)
         ymin, ymax = ax2.get_ylim()
+        if len(dist) and percentiles:
+            for value, perc in zip(np.percentile(dist, percentiles), percentiles):
+                color = 'r' if perc >= 95 and value > 10 else 'k'
+                ax2.vlines(value, ymin, ymax, label=f'{perc}th : {value:.1f} microns', color=color, alpha=0.5)
 
-        for value, perc in zip(percentiles, showPercentiles):
-            color = 'r' if perc == 95 and value > 10 else 'k'
-            ax2.vlines(value, ymin, ymax, label=f'{perc}th : {value:.1f} microns', color=color, alpha=0.5)
-            label = ax2.legend().get_texts()[-1]
-            label.set_color(color)
+        ax2.legend(loc='upper right', fontsize=8)
+
+        # cumulative distribution of the shown iteration on a twin axis.
+        if self.cumAxis is None:
+            self.cumAxis = ax2.twinx()
+        self.cumAxis.cla()
+        # cla() resets the shared axis to the left; put it back on the right.
+        self.cumAxis.yaxis.set_label_position("right")
+        self.cumAxis.yaxis.tick_right()
+        self.cumAxis.set_ylim(0, 100)
+        if showCumulative and len(dist):
+            xs = np.sort(dist)
+            ys = 100 * np.arange(1, len(xs) + 1) / len(xs)
+            self.cumAxis.plot(xs, ys, color='0.2', linewidth=1.5)
+            self.cumAxis.set_ylabel("cumulative %")
+        else:
+            self.cumAxis.set_yticks([])
+
+        # statistics box on the map's empty corner.
+        threshold = self.loadConvergThreshold(visitId)
+        ax1.text(0.02, 0.02, self.statsText(stats, dist, percentiles, threshold),
+                 transform=ax1.transAxes, va='bottom', ha='left', fontsize=8, family='monospace',
+                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
 
         fig.tight_layout()
 
         return True
 
+    @staticmethod
+    def parsePercentiles(showPercentiles):
+        """Percentiles to display, from a comma-separated string, kept within [0, 100]."""
+        try:
+            values = [int(v) for v in str(showPercentiles).split(',')]
+        except ValueError:
+            return [75, 95]
+        values = [v for v in values if 0 <= v <= 100]
+        return values or [75, 95]
+
+    @staticmethod
+    def distToTarget(data):
+        """Distance from target to measured centre, in microns."""
+        return 1e3 * np.hypot(data.pfi_center_x_mm - data.pfi_target_x_mm,
+                              data.pfi_center_y_mm - data.pfi_target_y_mm)
+
+    def convergenceStats(self, finalData):
+        """Convergence bookkeeping for the shown iteration, by cobra role.
+
+        converging and toDot come from cobra_command (CONVERGE / BLACK_DOT), or on legacy
+        configs without it from target type. notConverged is read from fiber_status; hidden
+        counts the dot cobras with no measured final position (undetected behind the dot).
+        """
+        good = finalData.loc[self.goodIdx]
+        fiberStatus = good.fiberStatus
+        if (good.cobraCommand == CobraCommand.CONVERGE).any():
+            converging = good.cobraCommand == CobraCommand.CONVERGE
+            toDot = good.cobraCommand == CobraCommand.BLACK_DOT
+        else:
+            converging = (good.targetType != TargetType.UNASSIGNED) & (fiberStatus != FiberStatus.MASKED)
+            toDot = good.targetType == TargetType.BLACKSPOT
+        return {'converging': int(converging.sum()),
+                'notConverged': int((fiberStatus[converging] == FiberStatus.NOTCONVERGED).sum()),
+                'toDot': int(toDot.sum()),
+                'hidden': int((toDot & good.notDetected).sum()),
+                'broken': len(self.badIdx)}
+
+    @staticmethod
+    def statsText(stats, dist, percentiles, threshold=None):
+        """Summary grouped by cobra role. converging, toDot and broken partition the cobras
+        (they should sum to the cobra count); the convergence numbers hang under converging.
+        """
+        def frac(n, d):
+            return f' ({100 * n / d:.0f}%)' if d else ''
+
+        notConvLabel = f'notConverged(<{threshold:.0f}um)' if threshold is not None else 'notConverged'
+        lines = [f'converging: {stats["converging"]}']
+        if len(dist):
+            lines.append(f'    median: {np.median(dist):.1f} um')
+            for perc, value in zip(percentiles, np.percentile(dist, percentiles)):
+                lines.append(f'    {perc}th: {value:.1f} um')
+        lines.append(f'    {notConvLabel}: {stats["notConverged"]}'
+                     f'{frac(stats["notConverged"], stats["converging"])}')
+        lines.append('')
+        lines.append(f'to dot: {stats["toDot"]}')
+        lines.append(f'    hidden: {stats["hidden"]}{frac(stats["hidden"], stats["toDot"])}')
+        lines.append(f'broken: {stats["broken"]}')
+        return '\n'.join(lines)
+
     def selectMovingCobras(self, iterData):
-        """Filter cobras returning only moving cobras."""
+        """Cobras driven to converge on a science target, the ones the statistics are about.
+
+        cobra_command CONVERGE, or on legacy configs without it, assigned non-masked science
+        cobras. Black-dot and broken cobras are counted separately and left out: their
+        distance to target is not a convergence measure.
+        """
         iterData = iterData.loc[self.goodIdx]
         if (iterData.cobraCommand == CobraCommand.CONVERGE).any():
-            # Keep only cobras driven to converge; those parked on the black dot or sent
-            # home sit ~mm from their recorded target and bias the histogram and percentiles.
-            MASK = iterData.cobraCommand == CobraCommand.CONVERGE
+            keep = iterData.cobraCommand == CobraCommand.CONVERGE
         else:
-            # Legacy config without cobra_command: fall back to target type and fiber status.
-            MASK = (iterData.targetType != TargetType.UNASSIGNED) & (iterData.fiberStatus != FiberStatus.MASKED)
-        return iterData[MASK]
+            keep = (iterData.targetType != TargetType.UNASSIGNED) & (iterData.fiberStatus != FiberStatus.MASKED)
+        return iterData[keep]
