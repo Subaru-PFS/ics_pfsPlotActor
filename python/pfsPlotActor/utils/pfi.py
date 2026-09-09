@@ -46,7 +46,7 @@ class ConvergencePlot(livePlot.LivePlot):
     @staticmethod
     def loadPfsConfigFromDB(visitId):
         sql = (
-            "SELECT pcf.fiber_id, pdf.target_type, pcf.fiber_status "
+            "SELECT pcf.fiber_id, pdf.target_type, pcf.fiber_status, pcf.cobra_command "
             "FROM pfs_config AS pc "
             "INNER JOIN pfs_config_fiber AS pcf "
             "ON pcf.pfs_design_id = pc.pfs_design_id AND pcf.visit0 = pc.visit0 "
@@ -94,6 +94,7 @@ class ConvergencePlot(livePlot.LivePlot):
         iterData['fiberId'] = sgfm.loc[iterData.cobra_id.to_numpy() - 1].fiberId.to_numpy()
         iterData['targetType'] = pfsConfigDf.loc[iterData.fiberId.to_numpy()].target_type.to_numpy()
         iterData['fiberStatus'] = pfsConfigDf.loc[iterData.fiberId.to_numpy()].fiber_status.to_numpy()
+        iterData['cobraCommand'] = pfsConfigDf.loc[iterData.fiberId.to_numpy()].cobra_command.to_numpy()
         return iterData
 
     def selectData(self, latestVisitId, visitId):

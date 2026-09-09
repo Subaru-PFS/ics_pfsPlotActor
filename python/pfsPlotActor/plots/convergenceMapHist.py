@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pfsPlotActor.utils.pfi as pfiUtils
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from pfs.datamodel import TargetType, FiberStatus
+from pfs.datamodel import TargetType, FiberStatus, CobraCommand
 from pfsPlotActor.utils.sgfm import calibModel
 
 reload(pfiUtils)
@@ -138,8 +138,12 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
 
     def selectMovingCobras(self, iterData):
         """Filter cobras returning only moving cobras."""
-        # show moving cobras.
         iterData = iterData.loc[self.goodIdx]
-        # do not show UNASSIGNED and  MASKED cobras.
-        MASK = (iterData.targetType != TargetType.UNASSIGNED) & (iterData.fiberStatus != FiberStatus.MASKED)
+        if (iterData.cobraCommand == CobraCommand.CONVERGE).any():
+            # Keep only cobras driven to converge; those parked on the black dot or sent
+            # home sit ~mm from their recorded target and bias the histogram and percentiles.
+            MASK = iterData.cobraCommand == CobraCommand.CONVERGE
+        else:
+            # Legacy config without cobra_command: fall back to target type and fiber status.
+            MASK = (iterData.targetType != TargetType.UNASSIGNED) & (iterData.fiberStatus != FiberStatus.MASKED)
         return iterData[MASK]
