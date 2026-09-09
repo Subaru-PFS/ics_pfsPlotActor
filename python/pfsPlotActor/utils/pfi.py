@@ -58,6 +58,19 @@ class ConvergencePlot(livePlot.LivePlot):
         return ConvergencePlot.opdb.query_dataframe(sql).set_index('fiber_id').sort_index()
 
     @staticmethod
+    def loadConvergNumIter(visitId):
+        """Allocated number of convergence iterations for the visit, or None if unset.
+
+        This is the requested count, so it can exceed the iterations actually taken when
+        convergence stops early; callers should clamp to the last iteration present.
+        """
+        sql = f'select converg_num_iter from pfs_config where visit0={int(visitId)}'
+        df = ConvergencePlot.opdb.query_dataframe(sql)
+        if not len(df) or df.converg_num_iter.isna().all():
+            return None
+        return int(df.converg_num_iter.iloc[0])
+
+    @staticmethod
     def getPfsDesignId(visitId):
         visitId = int(visitId)
         sql = f'select pfs_design_id from pfs_visit where pfs_visit_id={visitId}'

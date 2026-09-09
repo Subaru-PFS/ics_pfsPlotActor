@@ -32,7 +32,18 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
             return
 
         [visitId] = convergeData.pfs_visit_id.unique()
-        nIter = convergeData.iteration.max() if nIter == -1 else nIter
+        maxIter = int(convergeData.iteration.max())
+        # Number iterations from the last frame back, anchored to the allocated convergence
+        # count (converg_num_iter, clamped to what actually ran). offset absorbs the goHome
+        # home frame (0 when goHome, -1 otherwise) without having to detect it, keeping the
+        # title, minIter cut and legend on the same 1-based convergence numbering.
+        numIter = self.loadConvergNumIter(visitId)
+        nRan = convergeData.iteration.nunique()
+        convCount = nRan if numIter is None else min(numIter, nRan)
+        offset = maxIter - convCount
+        if nIter == -1:
+            nIter = maxIter
+        titleIter = nIter - offset
 
         # filter the dataframe for the iteration value.
         iterData = convergeData.query(f'iteration=={nIter}').reset_index(drop=True)
@@ -83,14 +94,13 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         ax1.set_ylabel("Y (mm)")
 
         # label with the pfsvisit Id
-        tString = f'Convergence Distance: pfsVisitId = {visitId:d}, iteration = {nIter:d}'
+        tString = f'Convergence Distance: pfsVisitId = {visitId:d}, iteration = {titleIter:d}'
         ax1.set_title(tString)
 
         ax1.set_aspect('equal')
         ax1.format_coord = self.cobraIdFiberIdFormatter
 
-        convergeData = convergeData.query(f'iteration>={minIter}')
-        maxIter = convergeData.iteration.max()
+        convergeData = convergeData.query(f'iteration>={minIter + offset}')
 
         cmap = plt.get_cmap('viridis')
         cmap = cmap(np.linspace(1.0, 0, len(convergeData.iteration.unique())))
@@ -107,7 +117,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
             dist *= 1000
 
             n, bins, patches = ax2.hist(dist, alpha=0.6, histtype='step', linewidth=3,
-                                        label=f'{iterVal}-th Iteration', bins=bins, range=(vmin, vmax),
+                                        label=f'{iterVal - offset}-th Iteration', bins=bins, range=(vmin, vmax),
                                         color=cmap[i])
 
         ax2.legend(loc='upper right')
