@@ -35,6 +35,11 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         None when there is nothing to show.
         """
         self.convergenceSummary = self.convergenceSpread = self.targetSummary = ""
+        # the twin is not among self.axes, so clear() leaves it be; wipe it here rather than
+        # where it is drawn, which a run with nothing to show never reaches.
+        if self.cumAxis is not None:
+            self.cumAxis.cla()
+            self.cumAxis.set_yticks([])
         # Get convergence dataframe default is latest.
         convergeData = self.selectData(latestVisitId, visitId=visitId)
         if not len(convergeData):
@@ -153,7 +158,6 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         # cumulative distribution of the shown iteration on a twin axis.
         if self.cumAxis is None:
             self.cumAxis = ax2.twinx()
-        self.cumAxis.cla()
         # cla() resets the shared axis to the left; put it back on the right.
         self.cumAxis.yaxis.set_label_position("right")
         self.cumAxis.yaxis.tick_right()
@@ -218,7 +222,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         Counted over the cobras fps commanded: an uncommanded one is broken, and the design
         assigns it whatever it likes without that meaning anything. Engineering fibers hold no
         target and are left out. Only science, sky and flux standards are validated, so they
-        alone are the denominator; a config that recorded no verdict says so instead.
+        alone are the denominator; a config that recorded no verdict says so instead, whether it
+        wrote NOT_SET or, being older than the column, nothing at all.
         """
         working = finalData[finalData.cobraCommand != CobraCommand.NOT_COMMANDED]
         counts = [f'{int((working.targetType == targetType).sum())} {targetType.name}'
@@ -229,14 +234,17 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         if not len(assigned):
             return line
 
-        if (assigned.validationMask == TargetValidation.NOT_SET).all():
+        # a column older than the verdict comes back null, which pandas floats; the bit tests
+        # below need an integer, and a null is no more a verdict than NOT_SET is.
+        recorded = assigned.validationMask.notna() & (assigned.validationMask != TargetValidation.NOT_SET)
+        if not recorded.any():
             return f'{line}   Rejected: not recorded'
 
-        refused = assigned[(assigned.validationMask > 0)
-                           & (assigned.validationMask != TargetValidation.NOT_SET)]
-        line = f'{line}   Rejected: {self.boldText(str(len(refused)))}/{len(assigned)}'
-        why = [f'{int((refused.validationMask & int(flag)).astype(bool).sum())} {flag.name}'
-               for flag in self.rejectionFlags if (refused.validationMask & int(flag)).any()]
+        verdicts = assigned.validationMask[recorded].astype(int)
+        refused = verdicts[verdicts > 0]
+        line = f'{line}   Rejected: {self.boldText(str(len(refused)))}/{int(recorded.sum())}'
+        why = [f'{int((refused & int(flag)).astype(bool).sum())} {flag.name}'
+               for flag in self.rejectionFlags if (refused & int(flag)).any()]
         return f'{line} — {" · ".join(why)}' if why else line
 
     # a marker per target type on the map, the commonest type taking the plainest marker.

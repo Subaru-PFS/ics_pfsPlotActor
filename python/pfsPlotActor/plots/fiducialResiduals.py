@@ -54,7 +54,9 @@ def pointStatistics(data, pointColumn, expectedX, expectedY, columns):
          for point, group in rows.groupby(pointColumn)],
         columns=columns + ['rms', 'dx', 'dy'])
 
-    return rows, perPoint
+    # an empty frame is typed object, which quiver and the histograms cannot take; say float so
+    # a run that matched nothing draws empty rather than raising.
+    return rows, perPoint.astype({name: float for name in ('rms', 'dx', 'dy')})
 
 
 def perFiducialRMS(fidsData):
