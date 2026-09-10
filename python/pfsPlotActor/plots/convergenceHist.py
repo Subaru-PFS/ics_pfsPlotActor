@@ -8,7 +8,7 @@ reload(pfiUtils)
 
 
 class ConvergenceHist(pfiUtils.ConvergencePlot):
-    units = dict(vmin='microns', vmax='microns')
+    units = dict(vmin='µm', vmax='µm')
 
     def plot(self, latestVisitId, visitId=-1, vmin=0, vmax=30, bins=30, minIter=3):
         """Plot the latest dataset."""
@@ -38,7 +38,7 @@ class ConvergenceHist(pfiUtils.ConvergencePlot):
 
         ax.legend(loc='upper right')
         ax.set_title(f"Distance to Target: pfsVisitId = {visitId:d}")
-        ax.set_xlabel("Distance (microns)")
+        ax.set_xlabel("Distance (µm)")
         ax.set_ylabel("N")
         ax.set_aspect('auto')
         ax.grid()
