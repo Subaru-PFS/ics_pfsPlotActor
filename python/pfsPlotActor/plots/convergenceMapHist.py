@@ -3,7 +3,7 @@ from importlib import reload
 import matplotlib.pyplot as plt
 import numpy as np
 import pfsPlotActor.utils.pfi as pfiUtils
-from pfs.datamodel import TargetType, FiberStatus, CobraCommand
+from pfs.datamodel import TargetType, FiberStatus, CobraCommand, TargetValidation
 from pfsPlotActor.utils.sgfm import calibModel
 
 reload(pfiUtils)
@@ -18,7 +18,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         return list(self.singleSubFigure().subplots(1, 2, width_ratios=[1.0, 0.85]))
 
     def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3,
-             showPercentiles='75,95', showCumulative=False):
+             showPercentiles='75,95', showCumulative=True):
         """Plot the latest dataset."""
         shown = self.drawConvergence(self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
                                      nIter=nIter, vmin=vmin, vmax=vmax, bins=bins, minIter=minIter,
@@ -27,15 +27,14 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         return bool(shown)
 
     def drawConvergence(self, ax1, ax2, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30,
-                        bins=30, minIter=3, showPercentiles='75,95', showCumulative=False):
+                        bins=30, minIter=3, showPercentiles='75,95', showCumulative=True):
         """Draw the convergence map on ax1 and the per-iteration distance histogram on ax2.
 
         Shared by the standalone plot and the combined convergence/fiducials plot; the caller
         owns the figure, its layout and its titles. Returns the (visit, iteration) drawn, or
         None when there is nothing to show.
         """
-        self.convergenceSummary = self.convergenceSpread = ""
-        self.distanceName = "Distance to target"
+        self.convergenceSummary = self.convergenceSpread = self.targetSummary = ""
         # Get convergence dataframe default is latest.
         convergeData = self.selectData(latestVisitId, visitId=visitId)
         if not len(convergeData):
@@ -69,27 +68,37 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         # cobras entering the statistics, and their distance to target at this iteration.
         moving = self.selectMovingCobras(finalData)
         dist = self.distToTarget(moving)
-        # a run that drove nothing at a science target converged on the dots, so say so.
-        if len(moving) and (moving.cobraCommand == CobraCommand.BLACK_DOT).all():
-            self.distanceName = "Distance to black dot"
 
         vmin = float(dist.min()) if vmin == 'auto' else float(vmin)
         vmax = float(dist.max()) if vmax == 'auto' else float(vmax)
 
-        sc = ax1.scatter(calibModel.centers.real[moving['cobra_id'].values - 1],
-                         calibModel.centers.imag[moving['cobra_id'].values - 1],
-                         c=dist, marker='o', s=20, vmin=vmin, vmax=vmax)
+        # a marker per target type, so what a cobra was pointed at reads off the map.
+        sc = None
+        for targetType, marker, size in self.targetMarkers:
+            subset = moving[moving.targetType == targetType]
+            if not len(subset):
+                continue
+            sc = ax1.scatter(calibModel.centers.real[subset['cobra_id'].values - 1],
+                             calibModel.centers.imag[subset['cobra_id'].values - 1],
+                             c=dist.loc[subset.index], marker=marker, s=size, vmin=vmin, vmax=vmax)
 
-        # a cobra parked on its dot converged on nothing, so it carries no distance to colour;
-        # star it instead, telling it from the broken cobras' cross. A run whose subject is the
-        # dots has none left over, having just drawn them.
-        parked = finalData[(finalData.cobraCommand == CobraCommand.BLACK_DOT)
-                           & ~finalData.index.isin(moving.index)]
+        # a legacy config names no target type this knows; those keep the science marker.
+        rest = moving[~moving.targetType.isin([t for t, __, __ in self.targetMarkers])]
+        if len(rest):
+            sc = ax1.scatter(calibModel.centers.real[rest['cobra_id'].values - 1],
+                             calibModel.centers.imag[rest['cobra_id'].values - 1],
+                             c=dist.loc[rest.index], marker='o', s=20, vmin=vmin, vmax=vmax)
+
+        # a cobra driven at its dot is left uncoloured: it converged on nothing, and by the last
+        # iteration it is behind the dot with no position to measure anyway.
+        parked = finalData[finalData.cobraCommand == CobraCommand.BLACK_DOT]
         ax1.scatter(calibModel.centers.real[parked['cobra_id'].values - 1],
-                    calibModel.centers.imag[parked['cobra_id'].values - 1], marker='*', color='k',
-                    s=25, alpha=0.5)
+                    calibModel.centers.imag[parked['cobra_id'].values - 1], marker='h', color='k',
+                    s=20, alpha=0.35)
 
-        self.updateColorbar('convergence', ax1, sc, label='µm')
+        self.markerLegend(ax1, moving, len(parked), len(bad))
+        if sc is not None:
+            self.updateColorbar('convergence', ax1, sc, label='µm')
 
         ax1.set_xlabel("X (mm)")
         ax1.set_ylabel("Y (mm)")
@@ -100,7 +109,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         histData = convergeData.query(f'iteration>={minIter + offset}')
         cmap = plt.get_cmap('viridis')(np.linspace(1.0, 0, histData.iteration.nunique()))
         for i, (iterVal, group) in enumerate(histData.groupby('iteration')):
-            group = self.selectMovingCobras(self.addPfsConfigInfo(group, pfsConfigDf).reset_index())
+            group = self.selectMovingCobras(self.addPfsConfigInfo(group, pfsConfigDf).reset_index(),
+                                            orDots=True)
             ax2.hist(self.distToTarget(group), alpha=0.6, histtype='step', linewidth=3,
                      label=f'{iterVal - offset}-th Iteration', bins=bins, range=(vmin, vmax), color=cmap[i])
 
@@ -158,6 +168,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
 
         # read under the heading, which spans both panels rather than crowding either one.
         self.convergenceSpread = self.spreadText(dist, percentiles)
+        self.targetSummary = self.targetsText(finalData)
         self.convergenceSummary = self.statsText(stats, self.loadConvergThreshold(visitId))
 
         return int(visitId), int(shownIter)
@@ -177,6 +188,58 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         """Distance from target to measured centre, in microns."""
         return 1e3 * np.hypot(data.pfi_center_x_mm - data.pfi_target_x_mm,
                               data.pfi_center_y_mm - data.pfi_target_y_mm)
+
+    # what the design asked of a cobra, in the order a reader wants them. Only the first three
+    # carry a target to validate.
+    targetTypes = (TargetType.SCIENCE, TargetType.SKY, TargetType.FLUXSTD,
+                   TargetType.UNASSIGNED, TargetType.BLACKSPOT)
+    # why fps refused a target. NOT_SET is not a refusal but a config that recorded no verdict.
+    rejectionFlags = tuple(flag for flag in TargetValidation if flag != TargetValidation.NOT_SET)
+
+    def targetsText(self, finalData):
+        """What the design asked for, and what target validation refused of it.
+
+        Counted over the cobras fps commanded: an uncommanded one is broken, and the design
+        assigns it whatever it likes without that meaning anything. Engineering fibers hold no
+        target and are left out. Only science, sky and flux standards are validated, so they
+        alone are the denominator; a config that recorded no verdict says so instead.
+        """
+        working = finalData[finalData.cobraCommand != CobraCommand.NOT_COMMANDED]
+        counts = [f'{int((working.targetType == targetType).sum())} {targetType.name}'
+                  for targetType in self.targetTypes if (working.targetType == targetType).any()]
+
+        assigned = working[working.targetType.isin(self.targetTypes[:3])]
+        line = '  ·  '.join(counts)
+        if not len(assigned):
+            return line
+
+        if (assigned.validationMask == TargetValidation.NOT_SET).all():
+            return f'{line}   Rejected: not recorded'
+
+        refused = assigned[(assigned.validationMask > 0)
+                           & (assigned.validationMask != TargetValidation.NOT_SET)]
+        line = f'{line}   Rejected: {self.boldText(str(len(refused)))}/{len(assigned)}'
+        why = [f'{int((refused.validationMask & int(flag)).astype(bool).sum())} {flag.name}'
+               for flag in self.rejectionFlags if (refused.validationMask & int(flag)).any()]
+        return f'{line} — {" · ".join(why)}' if why else line
+
+    # a marker per target type on the map, the commonest type taking the plainest marker.
+    targetMarkers = ((TargetType.SCIENCE, 'o', 20), (TargetType.SKY, '^', 22),
+                     (TargetType.FLUXSTD, '*', 40))
+
+    def markerLegend(self, mapAxes, moving, parked, uncommanded):
+        """Name the markers in the map's empty corner, listing only the ones drawn."""
+        entries = [(marker, size, targetType.name, len(moving[moving.targetType == targetType]))
+                   for targetType, marker, size in self.targetMarkers]
+        entries.append(('h', 20, TargetType.BLACKSPOT.name, parked))
+        entries.append(('x', 20, 'NOT_COMMANDED', uncommanded))
+
+        handles = [mapAxes.scatter([], [], marker=marker, s=size, color='0.35',
+                                   label=f'{name} ({count})')
+                   for marker, size, name, count in entries if count]
+        if handles:
+            mapAxes.legend(handles=handles, loc='upper left', fontsize=7, framealpha=0.7,
+                           handletextpad=0.2, borderpad=0.3, labelspacing=0.25)
 
     @staticmethod
     def commandsRecorded(iterData):
@@ -218,11 +281,14 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
                 'broken': broken}
 
     def spreadText(self, dist, percentiles):
-        """Median and the requested percentiles of the distance to target, in microns."""
+        """Median and the requested percentiles of the distance to target.
+
+        Rounded to the micron, which is finer than the cobras are placed to.
+        """
         if not len(dist):
             return ''
-        spread = [f'median: {self.boldText(f"{np.median(dist):.1f} µm")}']
-        spread.extend(f'{perc}th: {self.boldText(f"{value:.1f} µm")}' for perc, value
+        spread = [f'median: {self.boldText(f"{np.median(dist):.0f} µm")}']
+        spread.extend(f'{perc}th: {self.boldText(f"{value:.0f} µm")}' for perc, value
                       in zip(percentiles, np.percentile(dist, percentiles)))
         return '   '.join(spread)
 
@@ -232,31 +298,40 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         Converging, black dot and broken partition the cobras, so the two denominators and
         BROKENCOBRA sum to the cobra count. ``threshold`` is in microns, and NOTCONVERGED is
         the fiber status, so it counts the cobras that ended further than that from their
-        target. BLACKDOT counts the dot cobras that went undetected behind their dot. The
+        target. HIDDEN counts the dot cobras fps recorded no final position for, having lost
+        sight of them behind their dot. The
         counts are bold and the labels plain, so the eye lands on the numbers.
         """
         def over(n, d):
             return self.boldText(f'{n}/{d} ({100 * n / d:.0f}%)' if d else f'{n}')
 
         return (f'NOTCONVERGED(>{threshold:.0f}µm): {over(stats["notConverged"], stats["converging"])}   '
-                f'BLACKDOT: {over(stats["hidden"], stats["toDot"])}   '
+                f'HIDDEN: {over(stats["hidden"], stats["toDot"])}   '
                 f'BROKENCOBRA: {self.boldText(str(stats["broken"]))}')
 
     def distanceHeading(self):
-        """The quantity name, with its spread alongside and the cobra counts underneath."""
-        heading = self.boldText(self.distanceName)
+        """What the design asked for, then the quantity name, then how the run came out.
+
+        The design is settled before a cobra moves, so it reads above the distance rather than
+        under it.
+        """
+        heading = self.boldText("Distance to target")
         if self.convergenceSpread:
             heading = f'{heading}   {self.convergenceSpread}'
-        return f'{heading}\n{self.convergenceSummary}' if self.convergenceSummary else heading
 
-    def selectMovingCobras(self, iterData):
+        lines = [line for line in (self.targetSummary, heading, self.convergenceSummary) if line]
+        return '\n'.join(lines)
+
+    def selectMovingCobras(self, iterData, orDots=False):
         """Cobras driven at a target, whose distance to it is what the run converged to.
 
         cobra_command CONVERGE, or on legacy configs without it, assigned non-masked science
-        cobras. Where a run commands none of them to a science target it is converging on the
-        dots instead, and the black dot cobras are the subject; on a run that has both, they are
-        counted separately and left out, their distance to a dot not being a convergence
-        measure. Uncommanded cobras are never included.
+        cobras. A cobra driven at its dot is left out of a run that has both: its distance to a
+        dot is not a convergence measure. Uncommanded cobras are never included.
+
+        orDots takes the black dot cobras where a run drove nothing at a science target, for a
+        caller that can use them: they were measured at every iteration, only the last hiding
+        them behind their dots.
         """
         if not self.commandsRecorded(iterData):
             iterData = iterData.loc[self.goodIdx]
@@ -264,8 +339,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
                     & (iterData.fiberStatus != FiberStatus.MASKED))
             return iterData[keep]
 
-        converging = iterData.cobraCommand == CobraCommand.CONVERGE
-        if converging.any():
-            return iterData[converging]
+        converging = iterData[iterData.cobraCommand == CobraCommand.CONVERGE]
+        if len(converging) or not orDots:
+            return converging
 
         return iterData[iterData.cobraCommand == CobraCommand.BLACK_DOT]

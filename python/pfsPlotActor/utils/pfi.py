@@ -148,7 +148,7 @@ class ConvergencePlot(livePlot.LivePlot):
     def loadPfsConfigFromDB(visitId):
         sql = (
             "SELECT pcf.fiber_id, pdf.target_type, pcf.fiber_status, pcf.cobra_command, "
-            "pcf.pfi_center_final_x_mm "
+            "pcf.pfi_center_final_x_mm, pcf.target_validation_mask "
             "FROM pfs_config AS pc "
             "INNER JOIN pfs_config_fiber AS pcf "
             "ON pcf.pfs_design_id = pc.pfs_design_id AND pcf.visit0 = pc.visit0 "
@@ -257,6 +257,8 @@ class ConvergencePlot(livePlot.LivePlot):
         iterData['targetType'] = pfsConfigDf.loc[iterData.fiberId.to_numpy()].target_type.to_numpy()
         iterData['fiberStatus'] = pfsConfigDf.loc[iterData.fiberId.to_numpy()].fiber_status.to_numpy()
         iterData['cobraCommand'] = pfsConfigDf.loc[iterData.fiberId.to_numpy()].cobra_command.to_numpy()
+        iterData['validationMask'] = \
+            pfsConfigDf.loc[iterData.fiberId.to_numpy()].target_validation_mask.to_numpy()
         # No measured final position means the spot was not detected (e.g. hidden behind the dot).
         finalX = pfsConfigDf.loc[iterData.fiberId.to_numpy()].pfi_center_final_x_mm.to_numpy(dtype=float)
         iterData['notDetected'] = np.isnan(finalX)
