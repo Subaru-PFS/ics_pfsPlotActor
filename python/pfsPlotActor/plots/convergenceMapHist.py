@@ -69,8 +69,14 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         moving = self.selectMovingCobras(finalData)
         dist = self.distToTarget(moving)
 
-        vmin = float(dist.min()) if vmin == 'auto' else float(vmin)
-        vmax = float(dist.max()) if vmax == 'auto' else float(vmax)
+        measured = dist[np.isfinite(dist)]
+        vmin = float(measured.min()) if vmin == 'auto' else float(vmin)
+        vmax = float(measured.max()) if vmax == 'auto' else float(vmax)
+
+        # a cobra with no spot matched to it has no distance to colour by; grey rather than
+        # the transparent a NaN would otherwise draw, so it does not silently leave the map.
+        unmeasured = plt.get_cmap('viridis').copy()
+        unmeasured.set_bad('0.85')
 
         # a marker per target type, so what a cobra was pointed at reads off the map.
         sc = None
@@ -80,14 +86,16 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
                 continue
             sc = ax1.scatter(calibModel.centers.real[subset['cobra_id'].values - 1],
                              calibModel.centers.imag[subset['cobra_id'].values - 1],
-                             c=dist.loc[subset.index], marker=marker, s=size, vmin=vmin, vmax=vmax)
+                             c=dist.loc[subset.index], marker=marker, s=size, vmin=vmin,
+                             vmax=vmax, cmap=unmeasured)
 
         # a legacy config names no target type this knows; those keep the science marker.
         rest = moving[~moving.targetType.isin([t for t, __, __ in self.targetMarkers])]
         if len(rest):
             sc = ax1.scatter(calibModel.centers.real[rest['cobra_id'].values - 1],
                              calibModel.centers.imag[rest['cobra_id'].values - 1],
-                             c=dist.loc[rest.index], marker='o', s=20, vmin=vmin, vmax=vmax)
+                             c=dist.loc[rest.index], marker='o', s=20, vmin=vmin, vmax=vmax,
+                             cmap=unmeasured)
 
         # a cobra driven at its dot is left uncoloured: it converged on nothing, and by the last
         # iteration it is behind the dot with no position to measure anyway.
@@ -111,7 +119,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         for i, (iterVal, group) in enumerate(histData.groupby('iteration')):
             group = self.selectMovingCobras(self.addPfsConfigInfo(group, pfsConfigDf).reset_index(),
                                             orDots=True)
-            ax2.hist(self.distToTarget(group), alpha=0.6, histtype='step', linewidth=3,
+            groupDist = self.distToTarget(group)
+            ax2.hist(groupDist[np.isfinite(groupDist)], alpha=0.6, histtype='step', linewidth=3,
                      label=f'{iterVal - offset}-th Iteration', bins=bins, range=(vmin, vmax), color=cmap[i])
 
         ax2.set_xlabel("Distance (µm)")
@@ -124,8 +133,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
 
         # percentiles of the shown iteration, guarded to [0, 100].
         percentiles = self.parsePercentiles(showPercentiles)
-        if len(dist) and percentiles:
-            for value, perc in zip(np.percentile(dist, percentiles), percentiles):
+        if len(measured) and percentiles:
+            for value, perc in zip(np.percentile(measured, percentiles), percentiles):
                 color = 'r' if perc >= 95 and value > 10 else 'k'
                 # axvline spans the axes whatever the y limit ends up being.
                 ax2.axvline(value, label=f'{perc}th : {value:.1f} µm', color=color, alpha=0.5)
@@ -145,8 +154,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         # keep the twin under the histogram, which being the newer axes it would cover.
         self.cumAxis.set_zorder(ax2.get_zorder() - 1)
         ax2.patch.set_visible(False)
-        if showCumulative and len(dist):
-            xs = np.sort(dist)
+        if showCumulative and len(measured):
+            xs = np.sort(measured)
             ys = 100 * np.arange(1, len(xs) + 1) / len(xs)
             # One muted line, behind the steps: filling under it would compete with the
             # histogram for the same area. The right axis is coloured to match, so which of
@@ -155,7 +164,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
             self.cumAxis.plot(xs, ys, color=cumulativeColor, linewidth=1.4, zorder=0)
             # The tail runs far past the histogram, so the curve leaves the panel below 100%.
             # Spell out where it actually is at the edge, which flattening near the top hides.
-            reached = 100 * np.mean(dist <= vmax)
+            reached = 100 * np.mean(measured <= vmax)
             self.cumAxis.annotate(f'{reached:.0f}% < {vmax:.0f} µm', xy=(vmax, reached),
                                   xytext=(-4, -4), textcoords='offset points', ha='right', va='top',
                                   fontsize=8, color=cumulativeColor)
@@ -167,7 +176,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
             self.cumAxis.set_yticks([])
 
         # read under the heading, which spans both panels rather than crowding either one.
-        self.convergenceSpread = self.spreadText(dist, percentiles)
+        self.convergenceSpread = self.spreadText(measured, percentiles)
         self.targetSummary = self.targetsText(finalData)
         self.convergenceSummary = self.statsText(stats, self.loadConvergThreshold(visitId))
 

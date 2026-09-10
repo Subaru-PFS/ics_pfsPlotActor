@@ -131,18 +131,29 @@ class ConvergencePlot(livePlot.LivePlot):
         load data to plot the results of a convergence run.
         This does a join on cobra_target and cobra_match to get both target and actual positions.
         This loads the results at a given iteration
+
+        A cobra with no spot matched to it, spot_id -1, comes back with a NaN position: it was
+        not measured that iteration, whatever cobra_match holds for it.
         """
         visitId = int(visitId)
 
-        sql = f'select cm.pfs_visit_id, cm.iteration, cm.cobra_id, cm.pfi_center_x_mm, cm.pfi_center_y_mm, ' \
+        sql = f'select cm.pfs_visit_id, cm.iteration, cm.cobra_id, cm.spot_id, ' \
+              f'cm.pfi_center_x_mm, cm.pfi_center_y_mm, ' \
               f'ct.pfi_target_x_mm, ct.pfi_target_y_mm, md.mcs_center_x_pix, md.mcs_center_y_pix, ' \
               f'md.mcs_second_moment_x_pix,md.mcs_second_moment_y_pix, md.peakvalue  from cobra_match ' \
               f'cm inner join cobra_target ct on ct.pfs_visit_id = cm.pfs_visit_id and ct.iteration = ' \
               f'cm.iteration and ct.cobra_id = cm.cobra_id inner join mcs_data md ' \
               f'on md.mcs_frame_id = cm.pfs_visit_id * 100 + cm.iteration and md.spot_id = cm.spot_id where cm.pfs_visit_id = {visitId} order by ct.cobra_id, ct.iteration'
 
-        # get data
-        return ConvergencePlot.opdb.query_dataframe(sql)
+        convergeData = ConvergencePlot.opdb.query_dataframe(sql)
+
+        # cobra_match records a position for a cobra it matched no spot to, which the cobra was
+        # never measured at. fps finalises those to NaN off the same flag; do it here so no
+        # caller mistakes one for a measurement.
+        unmatched = convergeData.spot_id == -1
+        convergeData.loc[unmatched, ['pfi_center_x_mm', 'pfi_center_y_mm']] = np.nan
+
+        return convergeData
 
     @staticmethod
     def loadPfsConfigFromDB(visitId):
