@@ -91,7 +91,7 @@ def perBrokenCobraRMS(convergeData):
     return rows, pd.merge(perCobra, sgfm[['cobraId', 'fiberId', 'x', 'y']], on='cobraId', how='inner')
 
 
-def matchedText(fiducialCount, positionRMS, residualMean, residualSigma):
+def matchedText(fiducialCount, positionRMS, residualMedian, residualSigma):
     """The fiducials carrying the statistics, then what each histogram came to.
 
     ``fiducialCount`` are the ones matched at every iteration, which is the population of both
@@ -99,7 +99,7 @@ def matchedText(fiducialCount, positionRMS, residualMean, residualSigma):
     not expected to match at all, so they are not counted as missing. The values are the ones
     the histograms are marked with, rounded to the micron the fiducials are good to, and named
     apart because they are not the same statistic: a median rms over the fiducials, then the
-    centre and width of the gaussian laid over every residual measured.
+    median of every residual measured and a sigma scaled from their interquartile range.
     """
     bold = pfiUtils.ConvergencePlot.boldText
     # a line each, saying what the number is of: the two are easily taken for one another.
@@ -107,9 +107,9 @@ def matchedText(fiducialCount, positionRMS, residualMean, residualSigma):
 
     if np.isfinite(positionRMS):
         lines.append(f'Stability per fiducial: {bold(f"{positionRMS:.0f}")} µm (median)')
-    if np.isfinite(residualMean):
+    if np.isfinite(residualMedian):
         spread = f' ± {bold(f"{residualSigma:.0f}")}' if np.isfinite(residualSigma) else ''
-        lines.append(f'Residual vs nominal: {bold(f"{residualMean:.0f}")}{spread} µm (gaussian)')
+        lines.append(f'Residual vs nominal: {bold(f"{residualMedian:.0f}")}{spread} µm (IQR)')
 
     return '\n'.join(lines)
 
@@ -125,29 +125,36 @@ def markValue(ax, value, color):
                 fontsize=8, color=color)
 
 
-def gaussianOverlay(ax, values, edges, color):
-    """Lay the gaussian of the same mean, spread and count over a histogram of ``values``.
+# a normal distribution puts 1.349 sigma between its quartiles, so an interquartile range
+# divided by that is a sigma no tail can inflate.
+NORMAL_IQR = 1.349
 
-    Returns (mean, sigma), nan when there is nothing to draw. The curve carries the area of the
-    bars it lies over, being scaled by their count and width. It names itself in a legend rather
-    than against the axis, unlike the bare line the other histogram carries: a curve fitted to a
-    distribution is not the single number that one marks.
+
+def markDistribution(ax, values, edges, color):
+    """Lay a gaussian over a histogram of ``values``, taking its width from their quartiles.
+
+    Returns (median, sigma), nan when there is nothing to measure. Centred on the median and
+    scaled by the interquartile range rather than by the moments, so neither the centre nor the
+    width follows a tail. The curve carries the area of the bars it lies over, and names itself
+    in a legend, unlike the bare dashed line the other histogram carries: that one holds one
+    number per fiducial and this one every measurement.
     """
     values = values[np.isfinite(values)]
-    if len(values) < 2:
+    if not len(values):
         return np.nan, np.nan
 
-    mean, sigma = values.mean(), values.std(ddof=1)
+    low, median, high = np.percentile(values, [25, 50, 75])
+    sigma = (high - low) / NORMAL_IQR
     if not sigma:
-        return mean, sigma
+        return median, sigma
 
     xs = np.linspace(edges[0], edges[-1], 200)
     ys = (len(values) * (edges[1] - edges[0]) / (sigma * np.sqrt(2 * np.pi))
-          * np.exp(-0.5 * ((xs - mean) / sigma) ** 2))
+          * np.exp(-0.5 * ((xs - median) / sigma) ** 2))
 
-    ax.plot(xs, ys, color=color, linewidth=1.5, label=f'{mean:.1f} ± {sigma:.1f} µm')
+    ax.plot(xs, ys, color=color, linewidth=1.5, label=f'{median:.0f} ± {sigma:.0f} µm (IQR)')
     ax.legend(loc='upper right', fontsize=7, framealpha=0.7, handlelength=1.2)
-    return mean, sigma
+    return median, sigma
 
 
 def saturated(values, low, high):
@@ -174,7 +181,7 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
     The two histograms count different things. rmsAxes holds one position rms per fiducial, each
     taken over the iterations, marked with their median. residualAxes holds every fiducial's
     residual at every iteration, marked with their median over the interquartile range, drawn
-    unalike so the two are not read as the same statistic. The map is coloured by position rms
+    unalike so the two are not read as one statistic. The map is coloured by position rms
     and its arrows draw the mean residual.
 
     vmin, vmax bound the rms in microns, and a point beyond them saturates rather than going
@@ -251,7 +258,7 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
     vmaxResidual = float(fiducialResidual.max()) if len(fiducialResidual) else 1.0
     __, edges, __ = residualAxes.hist(fiducialResidual, bins=bins, range=(0, vmaxResidual),
                                       alpha=0.7)
-    residualMean, residualSigma = gaussianOverlay(residualAxes, fiducialResidual, edges, 'navy')
+    residualMedian, residualSigma = markDistribution(residualAxes, fiducialResidual, edges, 'navy')
 
     if showBroken:
         mapAxes.scatter(brokenCobraRMS.x, brokenCobraRMS.y, c=brokenCobraRMS.rms, marker='o', s=40,
@@ -287,7 +294,7 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
         residualAxes.yaxis.tick_right()
         residualAxes.yaxis.set_label_position('right')
 
-    plot.fiducialSummary = matchedText(len(fiducialRMS), positionRMS, residualMean,
+    plot.fiducialSummary = matchedText(len(fiducialRMS), positionRMS, residualMedian,
                                       residualSigma)
 
     return int(visitId), convCount
@@ -309,7 +316,12 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
     units = dict(vmin='µm', vmax='µm', arrowSize='µm')
 
     def initialize(self):
-        """Map over the full height, the histogram of each quantity it carries stacked beside."""
+        """Map over the full height, the histogram of each quantity it carries stacked beside.
+
+        A window of its own is wider than it is tall, where the combined plot gives its
+        fiducials a narrow column; the panels are the same either way, only their arrangement
+        follows the shape there is to fill.
+        """
         subFig = self.singleSubFigure()
         grid = subFig.add_gridspec(2, 2, width_ratios=[1.0, 0.85], hspace=0.03)
         return [subFig.add_subplot(grid[:, 0]),
