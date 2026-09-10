@@ -69,9 +69,14 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         moving = self.selectMovingCobras(finalData)
         dist = self.distToTarget(moving)
 
+        # 'auto' has nothing to read from a run that measured no cobra at a target, so keep the
+        # range finite rather than handing matplotlib a NaN to bin over.
         measured = dist[np.isfinite(dist)]
-        vmin = float(measured.min()) if vmin == 'auto' else float(vmin)
-        vmax = float(measured.max()) if vmax == 'auto' else float(vmax)
+        if vmin == 'auto':
+            vmin = float(measured.min()) if len(measured) else 0.
+        if vmax == 'auto':
+            vmax = float(measured.max()) if len(measured) else 1.
+        vmin, vmax = float(vmin), float(vmax)
 
         # a cobra with no spot matched to it has no distance to colour by; grey rather than
         # the transparent a NaN would otherwise draw, so it does not silently leave the map.
@@ -140,8 +145,10 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
                 ax2.axvline(value, label=f'{perc}th : {value:.1f} µm', color=color, alpha=0.5)
 
         # Upper left, above the peak: the cumulative curve plateaus in the upper right and the
-        # distribution tail runs along the bottom.
-        self.makeRoomForLegend(ax2, ax2.legend(loc='upper left', fontsize=8, framealpha=0.8))
+        # distribution tail runs along the bottom. A run with nothing to show has nothing to
+        # name either, and matplotlib warns rather than drawing an empty box.
+        if ax2.get_legend_handles_labels()[0]:
+            self.makeRoomForLegend(ax2, ax2.legend(loc='upper left', fontsize=8, framealpha=0.8))
 
         # cumulative distribution of the shown iteration on a twin axis.
         if self.cumAxis is None:
