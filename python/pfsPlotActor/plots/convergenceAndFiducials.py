@@ -15,8 +15,8 @@ class ConvergenceAndFiducials(convergenceMapHist.ConvergenceMapHist):
     drawFiducialRMS for the right pair, leaving both standalone plots untouched.
     """
 
-    units = dict(vmin='microns', vmax='microns', vminRMS='microns', vmaxRMS='microns',
-                 arrowSize='microns')
+    units = dict(vmin='µm', vmax='µm', vminRMS='µm', vmaxRMS='µm',
+                 arrowSize='µm')
 
     def initialize(self):
         """Convergence map and histogram over the full height, fiducial RMS pair stacked beside.
@@ -32,23 +32,31 @@ class ConvergenceAndFiducials(convergenceMapHist.ConvergenceMapHist):
         self.subFigs = self.fig.subfigures(1, 2, width_ratios=[3.0, 1.0], wspace=0.02)
 
         axes = list(self.subFigs[0].subplots(1, 2, width_ratios=[1.0, 0.85]))
-        axes.extend(self.subFigs[1].subplots(2, 1, height_ratios=[1.6, 1.0]))
+
+        # The fiducial map takes a row to itself and the two histograms share the one beneath.
+        # They are nested in their own gridspec: a map spanning both columns is sized against
+        # them, and being square with a colorbar it leaves them a third of the width.
+        outer = self.subFigs[1].add_gridspec(2, 1, height_ratios=[1.6, 1.0])
+        axes.append(self.subFigs[1].add_subplot(outer[0]))
+
+        pair = outer[1].subgridspec(1, 2, wspace=0.0)
+        axes.extend(self.subFigs[1].add_subplot(pair[0, column]) for column in range(2))
         return axes
 
     def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3,
              showPercentiles='75,95', showCumulative=False,
-             vminRMS=0, vmaxRMS=15, binsRMS=20, addBrokenCobras=False,
-             showDisplacementAsArrow=False, arrowSize='auto'):
+             vminRMS=0, vmaxRMS=15, binsRMS=20, addBrokenCobras=('none', 'stable', 'all'),
+             showTransformResidualArrows=True, arrowSize='auto'):
         """Plot the latest dataset."""
         convergence = self.drawConvergence(self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
                                            nIter=nIter, vmin=vmin, vmax=vmax, bins=bins, minIter=minIter,
                                            showPercentiles=showPercentiles, showCumulative=showCumulative)
-        fiducials = fiducialResiduals.drawFiducialRMS(self, self.axes[2], self.axes[3], latestVisitId,
-                                                      visitId=visitId, vmin=vminRMS, vmax=vmaxRMS,
-                                                      addBrokenCobras=addBrokenCobras,
-                                                      showDisplacementAsArrow=showDisplacementAsArrow,
-                                                      bins=binsRMS, arrowSize=arrowSize)
-        # the convergence panels set the run on display; the fiducial RMS spans the whole run.
-        self.decorateTitles((self.distanceHeading(), self.boldText("Position RMS")),
+        fiducials = fiducialResiduals.drawFiducialRMS(
+            self, self.axes[2], self.axes[3], self.axes[4], latestVisitId, visitId=visitId,
+            vmin=vminRMS, vmax=vmaxRMS, addBrokenCobras=addBrokenCobras,
+            showTransformResidualArrows=showTransformResidualArrows, bins=binsRMS,
+            arrowSize=arrowSize, residualTicksRight=True)
+        # the convergence panels set the run on display; the fiducials span the whole run.
+        self.decorateTitles((self.distanceHeading(), fiducialResiduals.fiducialHeading(self)),
                             convergence)
         return bool(convergence or fiducials)
