@@ -97,22 +97,21 @@ def matchedText(fiducialCount, positionRMS, residualMean, residualSigma):
     ``fiducialCount`` are the ones matched at every iteration, which is the population of both
     histograms: one rms each, and one residual each per iteration. Broken and bad fiducials are
     not expected to match at all, so they are not counted as missing. The values are the ones
-    the histograms are marked with, in microns, and are named apart because they are not the
-    same statistic: a median rms over the fiducials, then the centre and width of the gaussian
-    laid over every residual measured.
+    the histograms are marked with, rounded to the micron the fiducials are good to, and named
+    apart because they are not the same statistic: a median rms over the fiducials, then the
+    centre and width of the gaussian laid over every residual measured.
     """
     bold = pfiUtils.ConvergencePlot.boldText
-    achieved = []
+    # a line each, saying what the number is of: the two are easily taken for one another.
+    lines = [f'matched: {bold(str(fiducialCount))}/{int(fiducials.FIDUCIALS_OK.sum())}']
 
     if np.isfinite(positionRMS):
-        achieved.append(f'Stability: {bold(f"{positionRMS:.1f}")} µm')
+        lines.append(f'Stability per fiducial: {bold(f"{positionRMS:.0f}")} µm (median)')
     if np.isfinite(residualMean):
-        spread = f' ± {bold(f"{residualSigma:.1f}")}' if np.isfinite(residualSigma) else ''
-        achieved.append(f'Residual: {bold(f"{residualMean:.1f}")}{spread} µm')
+        spread = f' ± {bold(f"{residualSigma:.0f}")}' if np.isfinite(residualSigma) else ''
+        lines.append(f'Residual vs nominal: {bold(f"{residualMean:.0f}")}{spread} µm (gaussian)')
 
-    # a line each: the column is too narrow to carry the count and both values across one.
-    return '\n'.join([f'matched: {bold(str(fiducialCount))}/{int(fiducials.FIDUCIALS_OK.sum())}',
-                      '   '.join(achieved)])
+    return '\n'.join(lines)
 
 
 def markValue(ax, value, color):

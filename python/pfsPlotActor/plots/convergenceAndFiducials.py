@@ -44,7 +44,7 @@ class ConvergenceAndFiducials(convergenceMapHist.ConvergenceMapHist):
         return axes
 
     def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3,
-             showPercentiles='75,95', showCumulative=False,
+             showPercentiles='75,95', showCumulative=True,
              vminRMS=0, vmaxRMS=15, binsRMS=20, addBrokenCobras=('none', 'stable', 'all'),
              showTransformResidualArrows=True, arrowSize='auto'):
         """Plot the latest dataset."""
