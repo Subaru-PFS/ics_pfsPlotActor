@@ -6,6 +6,7 @@ import pwd
 import sys
 
 import pfsPlotActor.mainWindow as mainWindow
+import pfsPlotActor.utils.offline as offline
 from PyQt5.QtWidgets import QApplication
 
 
@@ -13,6 +14,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', default=pwd.getpwuid(os.getuid()).pw_name, type=str, nargs='?', help='cmdr name')
     parser.add_argument('--fontsize', default=8, type=int, nargs='?', help='application font size')
+    parser.add_argument('--offline', default=None, type=str,
+                        help='path of a recording to open a tab on, instead of waiting for a visit')
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
@@ -60,6 +63,11 @@ def main():
         cp = app.desktop().availableGeometry().center()
         qr.moveCenter(cp)
         ex.move(qr.topLeft())
+
+        if args.offline:
+            offline.showRecording(ex.centralWidget(), args.offline)
+            # no hub will connect to enable the widget, the recording standing in for one.
+            ex.setConnected(True)
     except:
         actor.disconnectActor()
         raise
