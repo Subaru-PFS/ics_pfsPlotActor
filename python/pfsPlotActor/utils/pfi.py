@@ -16,6 +16,32 @@ class ConvergencePlot(livePlot.LivePlot):
     pfsDesign = None
     opdb = opdbIO.OpDB()
 
+    def clear(self):
+        """Clear the axes, and with them whatever the last draw loaded to fill them.
+
+        Every plot of this kind is cleared before it is drawn, so this is what keeps a query
+        from outliving the draw that asked for it, whether or not the plot calls beginDraw.
+        """
+        super().clear()
+        self.beginDraw()
+
+    def beginDraw(self):
+        """Forget what the last draw loaded, for a draw that did not clear first."""
+        self._perDraw = {}
+
+    def perDraw(self, key, load):
+        """The value of ``load()`` for this draw, fetched once however many panels ask for it.
+
+        Held no longer than the draw: a redraw is where an iteration that has just finished
+        comes from, so carrying a query across one would show the run as it was.
+        """
+        store = getattr(self, '_perDraw', None)
+        if store is None:
+            store = self._perDraw = {}
+        if key not in store:
+            store[key] = load()
+        return store[key]
+
     def updateColorbar(self, key, ax, mappable, label=None, location='right'):
         """Create the colorbar named ``key`` beside ``ax``, or refresh it in place.
 
@@ -64,15 +90,36 @@ class ConvergencePlot(livePlot.LivePlot):
     def decorateTitles(self, headings, shown=None):
         """Two levels of title: figure = the run, subfigure = the quantity it shows.
 
-        ``headings`` pairs with self.subFigs; ``shown`` is the (visit, iteration) on display,
-        or None when nothing was drawn. Panel titles are left alone, so a panel is free to
+        ``headings`` pairs with self.subFigs; ``shown`` is the (visit, iteration on display,
+        count the run took), or None when nothing was drawn. Panel titles are left alone, so a panel is free to
         title itself.
         """
         for subFig, heading in zip(self.subFigs, headings):
             # left aligned and spanning the subfigure, so a heading can carry lines of numbers.
-            subFig.suptitle(heading, x=0.01, ha='left', fontsize=13)
+            self.shrinkToFit(subFig.suptitle(heading, x=0.01, ha='left', fontsize=13), subFig)
 
-        self.fig.suptitle(self.runTitle(*shown) if shown else "", fontsize=14)
+        self.shrinkToFit(self.fig.suptitle(self.runTitle(*shown) if shown else "", fontsize=14),
+                         self.fig)
+
+    @staticmethod
+    def shrinkToFit(title, figure, smallest=6):
+        """Step ``title`` down in size until it fits ``figure``'s width, or reaches ``smallest``.
+
+        suptitle is not clipped, so a heading written for a wide canvas runs over its
+        neighbour, or off the window, in a tab that gives it a quarter of the width. Sized
+        against the width there is rather than the width it was written for.
+        """
+        try:
+            renderer = figure.canvas.get_renderer()
+        except AttributeError:
+            return title
+
+        while title.get_fontsize() > smallest:
+            if title.get_window_extent(renderer).width <= figure.bbox.width:
+                break
+            title.set_fontsize(title.get_fontsize() - 1)
+
+        return title
 
     @staticmethod
     def boldText(text):
@@ -82,19 +129,21 @@ class ConvergencePlot(livePlot.LivePlot):
         """
         return f"$\\bf{{{text.replace('%', chr(92) + '%').replace(' ', chr(92) + ' ')}}}$"
 
-    def runTitle(self, visitId, iteration):
+    def runTitle(self, visitId, iteration, count):
         """When the visit ran, how long it took, and the design it was observing.
 
-        Kept terse so it holds a single line down to an 11 inch window.
+        ``count`` is what the run took, ``iteration`` the one on show; they part when the user
+        asks for an earlier one, and the timing belongs to the run either way. Kept terse so it
+        holds a single line down to an 11 inch window.
         """
         parts = [f"v{visitId}"]
 
         startedAt, elapsed = self.loadConvergTiming(visitId)
         if startedAt is not None:
             parts.append(startedAt.strftime('%Y-%m-%d %H:%M'))
-        parts.append(f"nIter={iteration}")
+        parts.append(f"nIter={count}" if iteration == count else f"iter {iteration}/{count}")
         if elapsed is not None:
-            perIteration = f", {elapsed / iteration:.0f}s/iter" if iteration else ""
+            perIteration = f", {elapsed / count:.0f}s/iter" if count > 0 else ""
             parts.append(f"{elapsed:.0f}s{perIteration}")
 
         designId, designName = self.loadDesign(visitId)
@@ -112,7 +161,7 @@ class ConvergencePlot(livePlot.LivePlot):
         (converg_num_iter, clamped to what actually ran) absorbs it without having to detect
         it, so subtracting the offset gives 1-based convergence numbering.
         """
-        numIter = self.loadConvergNumIter(visitId)
+        numIter = self.perDraw(('numIter', int(visitId)), lambda: self.loadConvergNumIter(visitId))
         nRan = convergeData.iteration.nunique()
         convCount = nRan if numIter is None else min(numIter, nRan)
         return convCount, int(convergeData.iteration.max()) - convCount
@@ -222,12 +271,12 @@ class ConvergencePlot(livePlot.LivePlot):
     def loadConvergThreshold(visitId):
         """Distance [microns] within which a science fiber counts as converged.
 
-        Falls back to defaultConvergThreshold for a visit whose pfs_config does not record it.
+        None where pfs_config does not record it, for a caller to fall back and say that it did.
         """
         sql = f'select converg_distance_threshold from pfs_config where visit0={int(visitId)}'
         df = ConvergencePlot.opdb.query_dataframe(sql)
         if not len(df) or df.converg_distance_threshold.isna().all():
-            return ConvergencePlot.defaultConvergThreshold
+            return None
         return 1e3 * float(df.converg_distance_threshold.iloc[0])
 
     @staticmethod
@@ -279,7 +328,9 @@ class ConvergencePlot(livePlot.LivePlot):
         """The user might choose another visitId."""
         selectedVisit = latestVisitId if visitId == -1 else visitId
         selectedVisit = -1 if selectedVisit is None else selectedVisit
-        return self.loadConvergence(selectedVisit)
+        # both halves of the combined plot ask for this, and it is the expensive one.
+        return self.perDraw(('convergence', selectedVisit),
+                            lambda: self.loadConvergence(selectedVisit))
 
     def reloadDesign(self, visitId):
         """Reload PfsDesign"""

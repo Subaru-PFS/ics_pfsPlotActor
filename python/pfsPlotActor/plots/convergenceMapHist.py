@@ -20,6 +20,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
     def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3,
              showPercentiles='75,95', showCumulative=True):
         """Plot the latest dataset."""
+        self.beginDraw()
         shown = self.drawConvergence(self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
                                      nIter=nIter, vmin=vmin, vmax=vmax, bins=bins, minIter=minIter,
                                      showPercentiles=showPercentiles, showCumulative=showCumulative)
@@ -31,8 +32,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         """Draw the convergence map on ax1 and the per-iteration distance histogram on ax2.
 
         Shared by the standalone plot and the combined convergence/fiducials plot; the caller
-        owns the figure, its layout and its titles. Returns the (visit, iteration) drawn, or
-        None when there is nothing to show.
+        owns the figure, its layout and its titles. Returns the (visit, iteration drawn, count
+        the run took), or None when there is nothing to show.
         """
         self.convergenceSummary = self.convergenceSpread = self.targetSummary = ""
         # the twin is not among self.axes, so clear() leaves it be; wipe it here rather than
@@ -48,7 +49,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         [visitId] = convergeData.pfs_visit_id.unique()
         maxIter = int(convergeData.iteration.max())
         # offset puts the title, the minIter cut and the legend on 1-based convergence numbering.
-        __, offset = self.convergenceCount(convergeData, visitId)
+        convCount, offset = self.convergenceCount(convergeData, visitId)
         if nIter == -1:
             nIter = maxIter
         shownIter = nIter - offset
@@ -109,7 +110,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
 
         # a cobra driven at its dot is left uncoloured: it converged on nothing, and by the last
         # iteration it is behind the dot with no position to measure anyway.
-        parked = finalData[finalData.cobraCommand == CobraCommand.BLACK_DOT]
+        parked = self.dotCobras(finalData)
         ax1.scatter(calibModel.centers.real[parked['cobra_id'].values - 1],
                     calibModel.centers.imag[parked['cobra_id'].values - 1], marker='h', color='k',
                     s=20, alpha=0.35)
@@ -191,7 +192,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         self.targetSummary = self.targetsText(finalData)
         self.convergenceSummary = self.statsText(stats, self.loadConvergThreshold(visitId))
 
-        return int(visitId), int(shownIter)
+        return int(visitId), int(shownIter), convCount
 
     @staticmethod
     def parsePercentiles(showPercentiles):
@@ -276,6 +277,18 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         return iterData.cobraCommand.isin([CobraCommand.CONVERGE, CobraCommand.BLACK_DOT,
                                            CobraCommand.HOME]).any()
 
+    def dotCobras(self, finalData):
+        """The cobras driven at their black dot, however the config happens to record it.
+
+        Shared by the count and the map, which drew on different definitions and so could
+        disagree on a config too old to carry cobra_command.
+        """
+        if self.commandsRecorded(finalData):
+            return finalData[finalData.cobraCommand == CobraCommand.BLACK_DOT]
+
+        rows = finalData.loc[self.goodIdx]
+        return rows[rows.targetType == TargetType.BLACKSPOT]
+
     def convergenceStats(self, finalData):
         """Convergence bookkeeping for the shown iteration, by cobra role.
 
@@ -283,25 +296,31 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         NOT_COMMANDED), so they partition the cobras and report what fps decided for this
         visit rather than the calibration the client running this happens to have. A legacy
         config carries no cobra_command; there the roles come from target type and the broken
-        count from COBRA_OK_MASK. notConverged is read from fiber_status; hidden counts the
-        dot cobras with no measured final position (undetected behind the dot).
+        count from COBRA_OK_MASK, which is the running client's rather than the visit's, so
+        they no longer add to the cobras there are. notConverged is read from fiber_status;
+        hidden counts the dot cobras with no measured final position (undetected behind the
+        dot).
         """
         if self.commandsRecorded(finalData):
             rows = finalData
             converging = rows.cobraCommand == CobraCommand.CONVERGE
-            toDot = rows.cobraCommand == CobraCommand.BLACK_DOT
             broken = int((rows.cobraCommand == CobraCommand.NOT_COMMANDED).sum())
         else:
             rows = finalData.loc[self.goodIdx]
+            # a black dot target is not a science target: counting it as both put the roles
+            # over the cobras there are, and diluted the fraction that did not converge.
             converging = ((rows.targetType != TargetType.UNASSIGNED)
+                          & (rows.targetType != TargetType.BLACKSPOT)
                           & (rows.fiberStatus != FiberStatus.MASKED))
-            toDot = rows.targetType == TargetType.BLACKSPOT
             broken = len(self.badIdx)
+
+        # the same cobras the map stars, so the count beside it cannot say otherwise.
+        toDot = self.dotCobras(finalData)
 
         return {'converging': int(converging.sum()),
                 'notConverged': int((rows.fiberStatus[converging] == FiberStatus.NOTCONVERGED).sum()),
-                'toDot': int(toDot.sum()),
-                'hidden': int((toDot & rows.notDetected).sum()),
+                'toDot': len(toDot),
+                'hidden': int(toDot.notDetected.sum()),
                 'broken': broken}
 
     def spreadText(self, dist, percentiles):
@@ -320,16 +339,23 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         """The cobras that fell short, each over the total of the role it belongs to.
 
         Converging, black dot and broken partition the cobras, so the two denominators and
-        BROKENCOBRA sum to the cobra count. ``threshold`` is in microns, and NOTCONVERGED is
-        the fiber status, so it counts the cobras that ended further than that from their
-        target. HIDDEN counts the dot cobras fps recorded no final position for, having lost
-        sight of them behind their dot. The
-        counts are bold and the labels plain, so the eye lands on the numbers.
+        BROKENCOBRA sum to the cobra count. ``threshold`` is in microns, or None where the visit
+        recorded none and the usual one is assumed and marked as such. NOTCONVERGED is the fiber
+        status, so it counts the cobras that ended further than that from their target. HIDDEN
+        counts the dot cobras fps recorded no final position for, having lost sight of them
+        behind their dot. The counts are bold and the labels plain, so the eye lands on the
+        numbers.
         """
         def over(n, d):
             return self.boldText(f'{n}/{d} ({100 * n / d:.0f}%)' if d else f'{n}')
 
-        return (f'NOTCONVERGED(>{threshold:.0f}µm): {over(stats["notConverged"], stats["converging"])}   '
+        # a visit that recorded no threshold gets the usual one, questioned so that it is not
+        # read as what fps was actually told to converge to.
+        assumed = threshold is None
+        limit = self.defaultConvergThreshold if assumed else threshold
+
+        return (f'NOTCONVERGED(>{limit:.0f}µm{"?" if assumed else ""}): '
+                f'{over(stats["notConverged"], stats["converging"])}   '
                 f'HIDDEN: {over(stats["hidden"], stats["toDot"])}   '
                 f'BROKENCOBRA: {self.boldText(str(stats["broken"]))}')
 
@@ -359,7 +385,10 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         """
         if not self.commandsRecorded(iterData):
             iterData = iterData.loc[self.goodIdx]
+            # the same cut convergenceStats makes, so the distances and the count that sits
+            # beside them are over the one population.
             keep = ((iterData.targetType != TargetType.UNASSIGNED)
+                    & (iterData.targetType != TargetType.BLACKSPOT)
                     & (iterData.fiberStatus != FiberStatus.MASKED))
             return iterData[keep]
 
