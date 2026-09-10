@@ -7,7 +7,7 @@ import matplotlib
 matplotlib.use('Qt5Agg')
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
-from PyQt5.QtWidgets import QWidget, QSizePolicy, QGridLayout
+from PyQt5.QtWidgets import QWidget, QSizePolicy, QGridLayout, QScrollArea, QFrame
 from PyQt5.QtCore import Qt
 from matplotlib.figure import Figure
 import inspect
@@ -57,11 +57,21 @@ class MplWidget(QWidget):
         self.tweakGridLayout = QGridLayout()
         self.tweakGridLayout.setContentsMargins(0, 0, 0, 0)
 
-        # Add tweak widgets grid layout in a separate widget (initially hidden)
+        # Add tweak widgets grid layout in a separate widget (initially hidden). Wrapped in a
+        # horizontal scroll area so a wide tweak bar never forces the window wider than the
+        # screen: on a narrow window it scrolls instead of pinning the minimum width.
         self.tweakGridWidget = QWidget()
         self.tweakGridWidget.setLayout(self.tweakGridLayout)
-        self.tweakGridWidget.setVisible(self.tweakWidgetsVisible)
-        vbox.insertWidget(0, self.tweakGridWidget)
+
+        self.tweakScroll = QScrollArea()
+        self.tweakScroll.setWidget(self.tweakGridWidget)
+        self.tweakScroll.setWidgetResizable(True)
+        self.tweakScroll.setFrameShape(QFrame.NoFrame)
+        self.tweakScroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.tweakScroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.tweakScroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.tweakScroll.setVisible(self.tweakWidgetsVisible)
+        vbox.insertWidget(0, self.tweakScroll)
 
         self.setLayout(vbox)
 
@@ -126,6 +136,11 @@ class MplWidget(QWidget):
             row, col = divmod(i, MplWidget.maxNumCols)
             self.tweakGridLayout.addWidget(widget, row, col)
 
+        # Keep the scroll area just tall enough for the grid rows plus the horizontal scrollbar.
+        gridHeight = self.tweakGridWidget.sizeHint().height()
+        scrollBarHeight = self.tweakScroll.horizontalScrollBar().sizeHint().height()
+        self.tweakScroll.setFixedHeight(gridHeight + scrollBarHeight)
+
         self.toggleTweakWidgets()
 
     def showContextMenu(self, pos):
@@ -141,7 +156,7 @@ class MplWidget(QWidget):
     def toggleTweakWidgets(self):
         """Toggle the visibility of tweak widgets."""
         self.tweakWidgetsVisible = not self.tweakWidgetsVisible
-        self.tweakGridWidget.setVisible(self.tweakWidgetsVisible)
+        self.tweakScroll.setVisible(self.tweakWidgetsVisible)
 
 
 class MplCanvas(FigureCanvasQTAgg):

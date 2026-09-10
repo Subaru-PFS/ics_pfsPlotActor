@@ -52,3 +52,5 @@ class TabContainer(QWidget):
 
         # adding the plotWidget in the layout
         self.layout().addWidget(w1, row, col)
+
+        return obj

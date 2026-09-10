@@ -202,8 +202,9 @@ class TabWidget(QTabWidget):
             self.pendingFocusQueue.append(tabContainer)
 
     def loadLayout(self, layoutList):
-        """Restore layout from a saved list of tab/plot definitions."""
+        """Restore layout from a saved list of tab/plot definitions, returning the plots."""
         #  self.clear()  # Remove any existing tabs
+        livePlots = []
 
         for tab in layoutList:
             tabName = tab["name"]
@@ -213,11 +214,13 @@ class TabWidget(QTabWidget):
 
             for plotKwargs in plots:
                 # For each plot, add it directly in the grid
-                container.setPlotWidgetInGrid(**plotKwargs)
+                livePlots.append(container.setPlotWidgetInGrid(**plotKwargs))
 
             self.addTab(container, tabName)
 
         self.setCurrentIndex(0)
+
+        return livePlots
 
     def saveLayout(self):
         """Save the current layout of all tabs."""
