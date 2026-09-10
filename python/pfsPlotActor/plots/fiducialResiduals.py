@@ -177,8 +177,9 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
 
     A free function so both FiducialResiduals and the combined plot can call it; ``plot`` is the
     LivePlot providing selectData, getFiducialData, updateColorbar and cobraIdFiberIdFormatter.
-    The caller owns the figure, its layout and its titles. Returns the (visit, iteration count)
-    the statistics were taken over, or None when there is nothing to show.
+    The caller owns the figure, its layout and its titles. Returns the (visit, iteration count,
+    iteration count) the statistics were taken over, the whole run being their subject, or None
+    when there is nothing to show.
 
     The two histograms count different things. rmsAxes holds one position rms per fiducial, each
     taken over the iterations, marked with their median. residualAxes holds every fiducial's
@@ -299,7 +300,7 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
     plot.fiducialSummary = matchedText(len(fiducialRMS), positionRMS, residualMedian,
                                       residualSigma)
 
-    return int(visitId), convCount
+    return int(visitId), convCount, convCount
 
 
 def fiducialHeading(plot):
@@ -334,6 +335,7 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
              addBrokenCobras=('none', 'stable', 'all'),
              showTransformResidualArrows=True, bins=20, arrowSize='auto'):
         """Plot the latest dataset."""
+        self.beginDraw()
         shown = drawFiducialRMS(self, self.axes[0], self.axes[1], self.axes[2], latestVisitId,
                                 visitId=visitId, vmin=vmin, vmax=vmax, addBrokenCobras=addBrokenCobras,
                                 showTransformResidualArrows=showTransformResidualArrows, bins=bins,

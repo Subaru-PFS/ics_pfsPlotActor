@@ -48,6 +48,7 @@ class ConvergenceAndFiducials(convergenceMapHist.ConvergenceMapHist):
              vminRMS=0, vmaxRMS=15, binsRMS=20, addBrokenCobras=('none', 'stable', 'all'),
              showTransformResidualArrows=True, arrowSize='auto'):
         """Plot the latest dataset."""
+        self.beginDraw()
         convergence = self.drawConvergence(self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
                                            nIter=nIter, vmin=vmin, vmax=vmax, bins=bins, minIter=minIter,
                                            showPercentiles=showPercentiles, showCumulative=showCumulative)
@@ -58,5 +59,5 @@ class ConvergenceAndFiducials(convergenceMapHist.ConvergenceMapHist):
             arrowSize=arrowSize, residualTicksRight=True)
         # the convergence panels set the run on display; the fiducials span the whole run.
         self.decorateTitles((self.distanceHeading(), fiducialResiduals.fiducialHeading(self)),
-                            convergence)
+                            convergence or fiducials)
         return bool(convergence or fiducials)
