@@ -1,5 +1,6 @@
 from importlib import reload
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pfsPlotActor.utils.pfi as pfiUtils
@@ -116,6 +117,29 @@ def matchedText(fiducialCount, positionRMS, residualMedian, residualSigma):
     return '\n'.join(lines)
 
 
+def medianOf(values):
+    """The median of the finite ``values``, nan when there are none.
+
+    A single-iteration run has no position rms to speak of, so a column of them is all nan;
+    np.nanmedian answers nan there too but warns on the way, which is not a condition worth
+    a warning.
+    """
+    values = np.asarray(values, dtype=float)
+    values = values[np.isfinite(values)]
+    return float(np.median(values)) if len(values) else np.nan
+
+
+def autoRange(columns, reduce, fallback):
+    """``reduce`` over the finite values of every column, or ``fallback`` when there are none.
+
+    A colour scale needs a number at each end: a nan there is not a wide range, it is a range
+    matplotlib cannot draw with.
+    """
+    values = np.concatenate([np.asarray(column, dtype=float) for column in columns])
+    values = values[np.isfinite(values)]
+    return float(reduce(values)) if len(values) else float(fallback)
+
+
 def markValue(ax, value, color):
     """Mark ``value`` on ``ax`` and label it, in the room a legend would not fit into."""
     if not np.isfinite(value):
@@ -216,8 +240,8 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
     # 'stable' is measured against the colour scale, so the scale cannot depend on it in turn.
     merged = [fiducialRMS, brokenCobraRMS] if addBrokenCobras == 'all' else [fiducialRMS]
 
-    vmin = min([rmsVal.rms.min() for rmsVal in merged]) if vmin == 'auto' else float(vmin)
-    vmax = max([rmsVal.rms.max() for rmsVal in merged]) if vmax == 'auto' else float(vmax)
+    vmin = autoRange([rmsVal.rms for rmsVal in merged], np.min, 0.) if vmin == 'auto' else float(vmin)
+    vmax = autoRange([rmsVal.rms for rmsVal in merged], np.max, 1.) if vmax == 'auto' else float(vmax)
 
     if addBrokenCobras == 'stable':
         # one that moves further than the colour scale runs is not parked, it is drifting, and
@@ -228,8 +252,13 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
 
     showBroken = addBrokenCobras != 'none' and len(brokenCobraRMS)
 
+    # a point with no rms to colour by, as every point has on a single-iteration run; grey
+    # rather than the transparent a NaN would otherwise draw, so the map does not come out blank.
+    unmeasured = plt.get_cmap('viridis').copy()
+    unmeasured.set_bad('0.85')
+
     sc = mapAxes.scatter(fiducialRMS.x_mm, fiducialRMS.y_mm, c=fiducialRMS.rms, marker='D', s=40,
-                         vmin=vmin, vmax=vmax)
+                         vmin=vmin, vmax=vmax, cmap=unmeasured)
 
     shownRows = [fiducialRows, brokenRows] if showBroken else [fiducialRows]
     residual = np.concatenate([rows.residual.to_numpy(dtype=float) for rows in shownRows])
@@ -251,7 +280,7 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
 
     plot.updateColorbar('fiducial', mapAxes, sc, label='Stability (µm)')
 
-    positionRMS = np.nanmedian(fiducialRMS.rms.to_numpy(dtype=float))
+    positionRMS = medianOf(fiducialRMS.rms)
     rmsAxes.hist(saturated(fiducialRMS.rms.to_numpy(dtype=float), vmin, vmax), bins=bins,
                  range=(vmin, vmax), alpha=0.7)
     markValue(rmsAxes, positionRMS, 'blue')
@@ -268,7 +297,7 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
                         vmin=vmin, vmax=vmax)
         rmsAxes.hist(saturated(brokenCobraRMS.rms.to_numpy(dtype=float), vmin, vmax), bins=bins,
                      range=(vmin, vmax), alpha=0.7)
-        markValue(rmsAxes, np.nanmedian(brokenCobraRMS.rms.to_numpy(dtype=float)), 'orange')
+        markValue(rmsAxes, medianOf(brokenCobraRMS.rms), 'orange')
 
         brokenResidual = brokenRows.residual.to_numpy(dtype=float)
         residualAxes.hist(saturated(brokenResidual, 0, vmaxResidual), bins=bins,
