@@ -1,6 +1,6 @@
 from importlib import reload
 
-import pfs.drp.stella.utils.guiders as guiders
+import pfs.drp.qa.guiders.plotting as guiderPlotting
 import pfsPlotActor.utils.ag as agUtils
 
 reload(agUtils)
@@ -75,7 +75,6 @@ class FocusSweepPlot(agUtils.AgPlot):
              magMax='None',
              minFWHM=0.3,
              maxFWHM=1.59,
-             mmToMicrons=1e3,
              useM2Off3=True,
              forceAlpha='None', *args, **kwargs):
         """
@@ -100,33 +99,34 @@ class FocusSweepPlot(agUtils.AgPlot):
         magMax = None if magMax == 'None' else float(magMax)
         forceAlpha = None if forceAlpha == 'None' else float(forceAlpha)
 
-        AGC = [1, 2, 3, 4, 5, 6]
+        agcData = agUtils.AgPlot.readAgcData(visits)
 
-        guiders.plotFocus(self.getConn(), visits, AGC=AGC, plotBy=plotBy,
-                          colorBy=colorBy,
-                          showAGActorFocus=showAGActorFocus,
-                          showOpdbFocus=showOpdbFocus,
-                          showFWHM=showFWHM,
-                          showPfiFocusPosition=showPfiFocusPosition,
-                          averageByFocusPosition=averageByFocusPosition,
-                          showMedian=showMedian,
-                          showOnlyMedian=showOnlyMedian,
-                          connectMedian=connectMedian,
-                          showCameraId=showCameraId,
-                          showFocusSets=showFocusSets,
-                          onlyGuideStars=onlyGuideStars,
-                          plotFrac=plotFrac,
-                          ditherScale=ditherScale,
-                          yLimitsMicron=yLimitsMicron,
-                          useTraceRadius=useTraceRadius,
-                          magMin=magMin,
-                          magMax=magMax,
-                          minFWHM=minFWHM,
-                          maxFWHM=maxFWHM,
-                          mmToMicrons=mmToMicrons,
-                          useM2Off3=useM2Off3,
-                          forceAlpha=forceAlpha,
-                          figure=self.fig, axes=agUtils.AxesGrid(self.axes))
+        drawn = guiderPlotting.plotFocus(agcData, plotBy=plotBy,
+                                         colorBy=colorBy,
+                                         showAGActorFocus=showAGActorFocus,
+                                         showOpdbFocus=showOpdbFocus,
+                                         showFWHM=showFWHM,
+                                         showPfiFocusPosition=showPfiFocusPosition,
+                                         averageByFocusPosition=averageByFocusPosition,
+                                         showMedian=showMedian,
+                                         showOnlyMedian=showOnlyMedian,
+                                         connectMedian=connectMedian,
+                                         showCameraId=showCameraId,
+                                         showFocusSets=showFocusSets,
+                                         onlyGuideStars=onlyGuideStars,
+                                         plotFrac=plotFrac,
+                                         ditherScale=ditherScale,
+                                         yLimits_um=yLimitsMicron,
+                                         useTraceRadius=useTraceRadius,
+                                         magMin=magMin,
+                                         magMax=magMax,
+                                         minFWHM_arcsec=minFWHM,
+                                         maxFWHM_arcsec=maxFWHM,
+                                         useM2Off3=useM2Off3,
+                                         forceAlpha=forceAlpha,
+                                         fig=self.fig, axes=self.axes,
+                                         colorbars=self.previousColorbars())
+        self.keepColorbar(drawn)
 
         self.fig.tight_layout()
 

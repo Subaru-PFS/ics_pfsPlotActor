@@ -1,6 +1,5 @@
 from importlib import reload
 
-import pfs.drp.stella.utils.guiders as guiders
 import pfsPlotActor.utils.ag as agUtils
 
 reload(agUtils)
@@ -52,15 +51,14 @@ class ShowGuiderErrors(agUtils.AgPlot):
             DataFrame containing the AGC data to plot.
         visitId : int, optional
             ID of the visit being processed (default: -1).
-        All other parameters correspond to GuiderConfig settings.
+        All other parameters are drp_stella's GuiderConfig settings; see agUtils.guiderConfigs.
         """
         agcData = self.selectData(latestVisitId, visitId=visitId, includeAllVisitsInGroup=includeAllVisitsInGroup)
 
         if not len(agcData):
             return
 
-        # Instantiate a GuiderConfig object with the given settings
-        config = guiders.GuiderConfig(
+        fitConfig, plotConfig = agUtils.guiderConfigs(
             showAverageGuideStarPos=showAverageGuideStarPos,
             showAverageGuideStarPath=showAverageGuideStarPath,
             showGuideStars=showGuideStars,
@@ -82,6 +80,6 @@ class ShowGuiderErrors(agUtils.AgPlot):
         )
 
         # Call the plotting routine
-        guiders.showGuiderErrors(agcData, config=config, livePlot=self)
+        self.showGuiderErrors(agcData, self.axes[-1], fitConfig, plotConfig)
 
         return True
