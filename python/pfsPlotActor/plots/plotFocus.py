@@ -147,7 +147,9 @@ class FocusPlot(agUtils.AgPlot):
 
         agcData = self.agcData if useCache else agUtils.AgPlot.readAgcData(visits)
 
-        guiderPlotting.plotFocus(agcData, **plotParams, fig=self.fig, axes=self.axes)
+        drawn = guiderPlotting.plotFocus(agcData, **plotParams, fig=self.fig, axes=self.axes,
+                                         colorbars=self.previousColorbars())
+        self.keepColorbar(drawn)
 
         self.fig.tight_layout()
 

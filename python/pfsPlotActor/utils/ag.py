@@ -75,17 +75,23 @@ class AgPlot(livePlot.LivePlot):
         return selectedVisit
 
     def showGuiderErrors(self, agcData, ax, fitConfig, plotConfig):
-        """Fit the guider models to agcData and draw the guide stars' offsets on ax.
-
-        The colorbar is kept on the plot and updated on each redraw, rather than added again.
-        """
+        """Fit the guider models to agcData and draw the guide stars' offsets on ax."""
         fit = guiderAnalysis.fitGuiderModel(agcData, fitConfig)
-        colorbars = None if self.colorbar is None else (self.colorbar,)
-        drawn = guiderPlotting.showGuiderErrors(fit, plotConfig, ax=ax, colorbars=colorbars)
-        if drawn.colorbars:
-            [self.colorbar] = drawn.colorbars
+        drawn = guiderPlotting.showGuiderErrors(fit, plotConfig, ax=ax, colorbars=self.previousColorbars())
+        self.keepColorbar(drawn)
 
         return drawn
+
+    def previousColorbars(self):
+        """The colorbar for a drp_qa plot to update, as clear() leaves the colorbar's axes in place."""
+        return None if self.colorbar is None else (self.colorbar,)
+
+    def keepColorbar(self, drawn):
+        """Keep the colorbar a drp_qa plot drew for the next redraw, hidden while a redraw draws none."""
+        if drawn.colorbars:
+            [self.colorbar] = drawn.colorbars
+        if self.colorbar is not None:
+            self.colorbar.ax.set_visible(bool(drawn.colorbars))
 
 
 def guiderConfigs(showAverageGuideStarPos, showAverageGuideStarPath, showGuideStars, showGuideStarsAsPoints,
