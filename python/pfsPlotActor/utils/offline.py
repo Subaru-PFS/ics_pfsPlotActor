@@ -1,8 +1,9 @@
 """Recording and replay of the opdb queries a plot issues.
 
 Lets a plot be drawn without a database: a recording taken once from a real visit answers
-every query that plot repeats on each redraw. Queries are keyed by their SQL text, so a
-recording covers one visit whatever the tweaks are set to, the tweaks not reaching the SQL.
+every query that plot repeats on each redraw. Queries are keyed by their SQL text and bound
+parameters, so a recording covers one visit whatever the tweaks are set to, the tweaks not
+reaching the SQL.
 """
 
 import argparse
@@ -19,9 +20,10 @@ import pfsPlotActor.utils.pfi as pfiUtils
 MANIFEST = 'manifest.json'
 
 
-def queryKey(sql):
-    """The lookup key for a query: its text with runs of whitespace collapsed."""
-    return re.sub(r'\s+', ' ', sql).strip()
+def queryKey(sql, params=None):
+    """The lookup key for a query: its text with runs of whitespace collapsed, then its parameters."""
+    key = re.sub(r'\s+', ' ', sql).strip()
+    return key if params is None else f'{key} -- {json.dumps(params, sort_keys=True)}'
 
 
 class RecordedOpDB:
@@ -36,8 +38,8 @@ class RecordedOpDB:
         self.results = results
         self.visitId = visitId
 
-    def query_dataframe(self, sql):
-        key = queryKey(sql)
+    def query_dataframe(self, sql, params=None):
+        key = queryKey(sql, params)
         if key not in self.results:
             raise KeyError(f'nothing recorded for this query, only for another visit: {key}')
         return self.results[key].copy()
@@ -50,8 +52,8 @@ class RecordingOpDB:
         self.opdb = opdb
         self.results = {}
 
-    def query_dataframe(self, sql):
-        self.results[queryKey(sql)] = df = self.opdb.query_dataframe(sql)
+    def query_dataframe(self, sql, params=None):
+        self.results[queryKey(sql, params)] = df = self.opdb.query_dataframe(sql, params=params)
         return df
 
 

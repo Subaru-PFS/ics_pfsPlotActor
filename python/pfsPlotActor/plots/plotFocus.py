@@ -2,8 +2,7 @@ import hashlib
 import pickle
 from importlib import reload
 
-import pfs.drp.stella.utils.guiders as guiders
-import pfs.drp.stella.utils.sysUtils as sysUtils
+import pfs.drp.qa.guiders.plotting as guiderPlotting
 import pfsPlotActor.utils.ag as agUtils
 
 reload(agUtils)
@@ -34,6 +33,7 @@ class FocusPlot(agUtils.AgPlot):
         self.colorbar = None
         self.cacheKey = None
         self.agcData = None
+        self.visits = None
 
         # Define the first three subplots (1 row, 2 columns each)
         axs = self.fig.subplots(1, 1, sharex=True, height_ratios=[2], squeeze=False)
@@ -92,7 +92,6 @@ class FocusPlot(agUtils.AgPlot):
              magMax='None',
              minFWHM=0.3,
              maxFWHM=1.59,
-             mmToMicrons=1e3,
              useM2Off3=True,
              forceAlpha=0.5, *args, **kwargs):
         """
@@ -118,8 +117,6 @@ class FocusPlot(agUtils.AgPlot):
         magMax = None if magMax == 'None' else float(magMax)
         forceAlpha = None if forceAlpha == 'None' else float(forceAlpha)
 
-        AGC = [1, 2, 3, 4, 5, 6]
-
         plotParams = dict(plotBy=plotBy,
                           colorBy=colorBy,
                           showAGActorFocus=showAGActorFocus,
@@ -135,27 +132,27 @@ class FocusPlot(agUtils.AgPlot):
                           onlyGuideStars=onlyGuideStars,
                           plotFrac=plotFrac,
                           ditherScale=ditherScale,
-                          yLimitsMicron=yLimitsMicron,
+                          yLimits_um=yLimitsMicron,
                           useTraceRadius=useTraceRadius,
                           magMin=magMin,
                           magMax=magMax,
-                          minFWHM=minFWHM,
-                          maxFWHM=maxFWHM,
-                          mmToMicrons=mmToMicrons,
+                          minFWHM_arcsec=minFWHM,
+                          maxFWHM_arcsec=maxFWHM,
                           useM2Off3=useM2Off3,
                           forceAlpha=forceAlpha)
 
+        # A tweak redraws the same visits without reading them again.
         cacheKey = self.getCacheKey(plotParams)
-        useCache = self.cacheKey and cacheKey != self.cacheKey
+        useCache = self.agcData is not None and visits == self.visits and cacheKey != self.cacheKey
 
-        useAgcData = self.agcData if useCache else None
+        agcData = self.agcData if useCache else agUtils.AgPlot.readAgcData(visits)
 
-        agcData = guiders.plotFocus(self.getConn(), visits, agcData=useAgcData, AGC=AGC,
-                                    **plotParams, figure=self.fig, axes=agUtils.AxesGrid(self.axes))
+        guiderPlotting.plotFocus(agcData, **plotParams, fig=self.fig, axes=self.axes)
 
         self.fig.tight_layout()
 
         self.cacheKey = cacheKey
         self.agcData = agcData
+        self.visits = visits
 
         return True

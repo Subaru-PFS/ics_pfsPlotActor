@@ -1,37 +1,8 @@
-import numpy as np
-import pfs.drp.stella.utils.guiders as guiders
+import pfs.drp.qa.guiders.analysis as guiderAnalysis
+import pfs.drp.qa.guiders.plotting as guiderPlotting
+import pfs.drp.qa.guiders.queries as guiderQueries
 import pfsPlotActor.livePlot as livePlot
 from pfs.utils.database import opdb as opdbIO
-
-
-class AxesGrid:
-    """Present a flat list of Axes as the (nRows, 1) grid that guiders.plotFocus expects.
-
-    The deployed drp_stella weekly's guiders.plotFocus is inconsistent about axes
-    dimensionality: it indexes ``axes[i, j]`` (2-D) for plotting but also does
-    ``for ax in axes`` / ``axes.flatten()`` in its helpers (overplotFocusSets,
-    showVisitBoundaries, ShowFocusFit), which expect a flat sequence of Axes. A plain
-    ndarray cannot satisfy both. This wrapper is 2-D-indexable yet iterates and flattens
-    as individual Axes. Assumes a single column (the actor never uses plotPerCamera).
-    """
-
-    def __init__(self, axes):
-        self._axes = list(axes)
-        self.shape = (len(self._axes), 1)
-
-    def __getitem__(self, key):
-        # 2-D access axes[i, j] -> row i (single column); int access axes[i] -> Axes i.
-        i = key[0] if isinstance(key, tuple) else key
-        return self._axes[i]
-
-    def __iter__(self):
-        return iter(self._axes)
-
-    def __len__(self):
-        return len(self._axes)
-
-    def flatten(self):
-        return np.array(self._axes, dtype=object)
 
 
 class AgPlot(livePlot.LivePlot):
@@ -43,14 +14,17 @@ class AgPlot(livePlot.LivePlot):
 
     @staticmethod
     def readData(visitId, includeAllVisitsInGroup=False):
-        """
-        load data to plot the results of a convergence run.
-        This does a join on cobra_target and cobra_match to get both target and actual positions.
-        This loads the results at a given iteration
+        """Read the AG data of a visit, or of every visit in its group.
+
+        One row per matched spot, sorted by exposure, camera and spot, in hardware coordinates.
         """
         visits = AgPlot.getAllVisits(visitId, includeAllVisitsInGroup=includeAllVisitsInGroup)
-        return guiders.readAgcDataFromOpdb(livePlot.LivePlot.getConn(), visits=visits)
-        # return guiders.readAgcDataFromOpdb(AgPlot.opdb.connect(), visits=visits)
+        return AgPlot.readAgcData(visits)
+
+    @staticmethod
+    def readAgcData(visits):
+        """Read the AG data of some visits; see pfs.drp.qa.guiders.queries.readAgcData."""
+        return guiderQueries.readAgcData(AgPlot.opdb, visits)
 
     @staticmethod
     def getAllVisits(visitId, includeAllVisitsInGroup=False):
@@ -64,7 +38,7 @@ class AgPlot(livePlot.LivePlot):
                 allVisits = AgPlot.opdb.query_dataframe(
                     f'select pfs_visit_id, visit0 from pfs_config_sps where visit0={visit0.squeeze().visit0}')
                 visits += list(allVisits.pfs_visit_id)
-                visits = list(set(visits))
+                visits = sorted(set(visits))
 
         return visits
 
@@ -99,3 +73,50 @@ class AgPlot(livePlot.LivePlot):
         selectedVisit = -1 if selectedVisit is None else selectedVisit
 
         return selectedVisit
+
+    def showGuiderErrors(self, agcData, ax, fitConfig, plotConfig):
+        """Fit the guider models to agcData and draw the guide stars' offsets on ax.
+
+        The colorbar is kept on the plot and updated on each redraw, rather than added again.
+        """
+        fit = guiderAnalysis.fitGuiderModel(agcData, fitConfig)
+        colorbars = None if self.colorbar is None else (self.colorbar,)
+        drawn = guiderPlotting.showGuiderErrors(fit, plotConfig, ax=ax, colorbars=colorbars)
+        if drawn.colorbars:
+            [self.colorbar] = drawn.colorbars
+
+        return drawn
+
+
+def guiderConfigs(showAverageGuideStarPos, showAverageGuideStarPath, showGuideStars, showGuideStarsAsPoints,
+                  showGuideStarsAsArrows, showGuideStarPositions, rotateToAG1Down, modelBoresightOffset,
+                  modelCCDOffset, solveForAGTransforms, onlyShutterOpen, maxGuideError, maxPosError,
+                  guideErrorEstimate, pfiScaleReduction, gstarExpansion, agc_exposure_idsStride, guide_star_frac):
+    """Split the guider-error tweaks into drp_qa's fit and plot configs.
+
+    The tweaks keep drp_stella's GuiderConfig names, which the GUI shows; drp_qa renames them.
+    """
+    fitConfig = guiderAnalysis.GuiderFitConfig(
+        modelBoresightOffset=modelBoresightOffset,
+        modelCCDOffset=modelCCDOffset,
+        solveForAGTransforms=solveForAGTransforms,
+        onlyShutterOpen=onlyShutterOpen,
+        maxGuideError_um=maxGuideError,
+        maxPosError_um=maxPosError,
+        agcExposureStride=agc_exposure_idsStride,
+    )
+    plotConfig = guiderPlotting.GuiderPlotConfig(
+        showGuideStars=showGuideStars,
+        showGuideStarsAsPoints=showGuideStarsAsPoints,
+        showGuideStarsAsArrows=showGuideStarsAsArrows,
+        showGuideStarPositions=showGuideStarPositions,
+        showAverageGuideStarPos=showAverageGuideStarPos,
+        showAverageGuideStarPath=showAverageGuideStarPath,
+        rotateToAG1Down=rotateToAG1Down,
+        guideErrorEstimate_um=guideErrorEstimate,
+        pfiScaleReduction=pfiScaleReduction,
+        gstarExpansion=gstarExpansion,
+        guideStarFrac=guide_star_frac,
+    )
+
+    return fitConfig, plotConfig
