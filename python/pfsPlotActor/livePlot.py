@@ -2,7 +2,6 @@ import logging
 from collections.abc import Iterable
 
 import matplotlib as mpl
-import psycopg2
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 
@@ -40,16 +39,6 @@ class LivePlot(object):
     @property
     def tweakDict(self):
         return dict([(k, w.getValue()) for k, w in self.tweaks.items()])
-
-    @staticmethod
-    def getConn():
-        """
-        Establishes a connection to the PostgreSQL database 'opdb'.
-
-        Returns:
-        conn: A PostgreSQL connection object.
-        """
-        return psycopg2.connect("dbname='opdb' host='db-ics' port=5432 user='pfs'")
 
     def initialize(self):
         """Initialize your axes"""

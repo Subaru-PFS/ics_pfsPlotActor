@@ -1,6 +1,6 @@
 from importlib import reload
 
-import pfs.drp.stella.utils.guiders as guiders
+import pfs.drp.qa.guiders.plotting as guiderPlotting
 import pfsPlotActor.utils.ag as agUtils
 from matplotlib.gridspec import GridSpec
 
@@ -68,15 +68,14 @@ class ShowGuiderErrorsCombined(agUtils.AgPlot):
             DataFrame containing the AGC data to plot.
         visitId : int, optional
             ID of the visit being processed (default: -1).
-        All other parameters correspond to GuiderConfig settings.
+        All other parameters are drp_stella's GuiderConfig settings; see agUtils.guiderConfigs.
         """
         agcData = self.selectData(latestVisitId, visitId=visitId, includeAllVisitsInGroup=includeAllVisitsInGroup)
 
         if not len(agcData):
             return
 
-        # Instantiate a GuiderConfig object with the given settings
-        config = guiders.GuiderConfig(
+        fitConfig, plotConfig = agUtils.guiderConfigs(
             showAverageGuideStarPos=showAverageGuideStarPos,
             showAverageGuideStarPath=showAverageGuideStarPath,
             showGuideStars=showGuideStars,
@@ -98,9 +97,8 @@ class ShowGuiderErrorsCombined(agUtils.AgPlot):
         )
 
         # Call both plotting routines
-
-        guiders.showAgcErrorsForVisits(agcData, livePlot=self)
-        guiders.showGuiderErrors(agcData, config=config, livePlot=self)
+        guiderPlotting.showAgcErrorsForVisits(agcData, axes=self.axes[:3])
+        self.showGuiderErrors(agcData, self.axes[-1], fitConfig, plotConfig)
         self.fig.tight_layout()
 
         return True

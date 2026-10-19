@@ -1,6 +1,6 @@
 from importlib import reload
 
-import pfs.drp.stella.utils.guiders as guiders
+import pfs.drp.qa.guiders.plotting as guiderPlotting
 import pfsPlotActor.utils.ag as agUtils
 
 reload(agUtils)
@@ -47,6 +47,6 @@ class showAgcErrorsForVisits(agUtils.AgPlot):
             return
 
         # Call the plotting routine
-        guiders.showAgcErrorsForVisits(agcData, livePlot=self)
+        guiderPlotting.showAgcErrorsForVisits(agcData, axes=self.axes)
 
         return True
