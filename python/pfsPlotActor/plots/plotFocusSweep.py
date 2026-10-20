@@ -57,8 +57,8 @@ class FocusSweepPlot(agUtils.AgPlot):
 
         return dict(dataId=lastFocusVisit, newValue=newValue)
 
-    def plot(self, latestFocusVisitId, visitId=-1, plotBy="focus",
-             colorBy="camera",
+    def plot(self, latestFocusVisitId, visitId=-1, plotBy=("focus", "agc_exposure_id", "altitude", "insrot"),
+             colorBy=("camera", "visit", "altitude", "insrot"),
              showPfiFocusPosition=False,
              averageByFocusPosition=False,
              showMedian=True,
@@ -95,6 +95,8 @@ class FocusSweepPlot(agUtils.AgPlot):
         showOpdbFocus = True
         showFWHM = True
 
+        plotBy = plotBy[0] if isinstance(plotBy, tuple) else plotBy
+        colorBy = colorBy[0] if isinstance(colorBy, tuple) else colorBy
         magMin = None if magMin == 'None' else float(magMin)
         magMax = None if magMax == 'None' else float(magMax)
         forceAlpha = None if forceAlpha == 'None' else float(forceAlpha)
