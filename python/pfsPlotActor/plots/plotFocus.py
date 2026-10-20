@@ -75,7 +75,7 @@ class FocusPlot(agUtils.AgPlot):
 
     def plot(self, latestSpsVisit, visitStart=-10, visitEnd=-1,
              plotBy=("agc_exposure_id", "altitude", "insrot", "focus"),
-             colorBy="camera",
+             colorBy=("camera", "visit", "altitude", "insrot"),
              showPfiFocusPosition=False,
              averageByFocusPosition=False,
              showMedian=False,
@@ -113,6 +113,8 @@ class FocusPlot(agUtils.AgPlot):
         showOpdbFocus = False
         showFWHM = False
 
+        plotBy = plotBy[0] if isinstance(plotBy, tuple) else plotBy
+        colorBy = colorBy[0] if isinstance(colorBy, tuple) else colorBy
         magMin = None if magMin == 'None' else float(magMin)
         magMax = None if magMax == 'None' else float(magMax)
         forceAlpha = None if forceAlpha == 'None' else float(forceAlpha)
