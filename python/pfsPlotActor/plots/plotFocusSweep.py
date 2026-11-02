@@ -38,7 +38,7 @@ class FocusSweepPlot(agUtils.AgPlot):
         """load the ag data"""
         # if no callback just return.
         if newValue:
-            exposureId, dRA, dDec, dInR, dAz, dAlt, dZ, dScale = keyvar.getValue()
+            exposureId = keyvar.getValue()[0]
             sql = f'select pfs_visit_id from agc_exposure where agc_exposure_id={exposureId}'
             [visitId, ] = agUtils.AgPlot.opdb.query_dataframe(sql).pfs_visit_id.to_numpy()
 
