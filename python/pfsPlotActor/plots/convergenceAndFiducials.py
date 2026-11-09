@@ -46,7 +46,7 @@ class ConvergenceAndFiducials(convergenceMapHist.ConvergenceMapHist):
     def plot(self, latestVisitId, visitId=-1, nIter=-1, vmin=0, vmax=30, bins=30, minIter=3,
              showPercentiles='75,95', showCumulative=True,
              vminRMS=0, vmaxRMS=15, binsRMS=20, addBrokenCobras=('none', 'stable', 'all'),
-             showTransformResidualArrows=True, arrowSize='auto'):
+             showTransformResidualArrows=True, showRejected=False, arrowSize='auto'):
         """Plot the latest dataset."""
         self.beginDraw()
         convergence = self.drawConvergence(self.axes[0], self.axes[1], latestVisitId, visitId=visitId,
@@ -55,8 +55,8 @@ class ConvergenceAndFiducials(convergenceMapHist.ConvergenceMapHist):
         fiducials = fiducialResiduals.drawFiducialRMS(
             self, self.axes[2], self.axes[3], self.axes[4], latestVisitId, visitId=visitId,
             vmin=vminRMS, vmax=vmaxRMS, addBrokenCobras=addBrokenCobras,
-            showTransformResidualArrows=showTransformResidualArrows, bins=binsRMS,
-            arrowSize=arrowSize, residualTicksRight=True)
+            showTransformResidualArrows=showTransformResidualArrows, showRejected=showRejected,
+            bins=binsRMS, arrowSize=arrowSize, residualTicksRight=True)
         # the convergence panels set the run on display; the fiducials span the whole run.
         self.decorateTitles((self.distanceHeading(), fiducialResiduals.fiducialHeading(self)),
                             convergence or fiducials)

@@ -8,6 +8,24 @@ from pfsPlotActor.utils.sgfm import fiducials, sgfm
 
 reload(pfiUtils)
 
+# match_mask bit of the fiducials the final transform pass matched.
+FINAL_PASS = 4
+REJECTED = 'red'
+
+
+def splitRejected(fidsData):
+    """Split the fiducial rows into those the final transform pass kept and those it rejected.
+
+    A rejected fiducial was matched to a spot by an earlier pass but not by the final one: it has
+    a position, without its match_mask carrying FINAL_PASS. Returns (inFit, rejected): inFit is
+    every row, with the positions of the rejected ones blanked, so a fiducial rejected at any
+    iteration counts as not matched there; rejected holds the rejected rows alone.
+    """
+    isRejected = fidsData.pfi_center_x_mm.notna() & ((fidsData.match_mask & FINAL_PASS) == 0)
+    inFit = fidsData.copy()
+    inFit.loc[isRejected, ['pfi_center_x_mm', 'pfi_center_y_mm']] = np.nan
+    return inFit, fidsData[isRejected]
+
 
 def matchedEveryIteration(data, pointColumn):
     """The rows of the points that were matched in every one of the iterations present.
@@ -66,7 +84,22 @@ def perFiducialRMS(fidsData):
     The residual is measured against the fiducial's nominal position, so it is what the mcs to
     pfi transform left behind. Returns (rows, perFiducial); see pointStatistics.
     """
-    fidsData = matchedEveryIteration(fidsData, 'fiducial_fiber_id')
+    inFit, __ = splitRejected(fidsData)
+    return againstNominal(matchedEveryIteration(inFit, 'fiducial_fiber_id'))
+
+
+def perRejectedFiducial(fidsData):
+    """Residuals of the fiducials the final transform pass rejected, at the iterations it did.
+
+    Returns (rows, perFiducial) as perFiducialRMS, perFiducial's dx, dy being the mean over the
+    rejected measurements only.
+    """
+    __, rejected = splitRejected(fidsData)
+    return againstNominal(rejected)
+
+
+def againstNominal(fidsData):
+    """Position rms and residuals of fiducial rows, against each one's nominal position."""
     index = fidsData.fiducial_fiber_id.to_numpy() - 1
 
     rows, perFiducial = pointStatistics(fidsData, 'fiducial_fiber_id',
@@ -94,19 +127,22 @@ def perBrokenCobraRMS(convergeData):
     return rows, pd.merge(perCobra, sgfm[['cobraId', 'fiberId', 'x', 'y']], on='cobraId', how='inner')
 
 
-def matchedText(fiducialCount, positionRMS, residualMedian, residualSigma):
+def matchedText(fiducialCount, rejectedCount, positionRMS, residualMedian, residualSigma):
     """The fiducials carrying the statistics, then what each histogram came to.
 
     ``fiducialCount`` are the ones matched at every iteration, which is the population of both
-    histograms: one rms each, and one residual each per iteration. Broken and bad fiducials are
-    not expected to match at all, so they are not counted as missing. The values are the ones
+    histograms: one rms each, and one residual each per iteration. ``rejectedCount`` are the ones
+    the final transform pass rejected at one iteration or more, shown when there are any. Broken
+    and bad fiducials are not expected to match at all, so they are not counted as missing. The
+    values are the ones
     the histograms are marked with, rounded to the micron the fiducials are good to, and named
     apart because they are not the same statistic: a median rms over the fiducials, then the
     median of every residual measured and a sigma scaled from their interquartile range.
     """
     bold = pfiUtils.ConvergencePlot.boldText
     # a line each, saying what the number is of: the two are easily taken for one another.
-    lines = [f'matched: {bold(str(fiducialCount))}/{int(fiducials.FIDUCIALS_OK.sum())}']
+    matched = f'matched: {bold(str(fiducialCount))}/{int(fiducials.FIDUCIALS_OK.sum())}'
+    lines = [f'{matched}, rejected: {bold(str(rejectedCount))}' if rejectedCount else matched]
 
     if np.isfinite(positionRMS):
         lines.append(f'Stability per fiducial: {bold(f"{positionRMS:.0f}")} µm (median)')
@@ -195,8 +231,8 @@ def saturated(values, low, high):
 
 
 def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId=-1, vmin=0, vmax=15,
-                    addBrokenCobras='none', showTransformResidualArrows=True, bins=20,
-                    arrowSize='auto', residualTicksRight=False):
+                    addBrokenCobras='none', showTransformResidualArrows=True, showRejected=False,
+                    bins=20, arrowSize='auto', residualTicksRight=False):
     """Draw the fiducial map on mapAxes, then a histogram of each quantity it carries.
 
     A free function so both FiducialResiduals and the combined plot can call it; ``plot`` is the
@@ -214,7 +250,9 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
     vmin, vmax bound the rms in microns, and a point beyond them saturates rather than going
     missing; the residuals frame themselves. addBrokenCobras measures the broken cobras the same
     way: 'all' of them, only the 'stable' ones, being those repeating within the colour scale, or
-    'none'. bins: histogram bins. arrowSize: arrow scale in microns, or 'auto'.
+    'none'. showRejected: draw the fiducials the final transform pass rejected, in red, on the map
+    with their id and mean residual, and in the residual histogram; they never enter the
+    statistics. bins: histogram bins. arrowSize: arrow scale in microns, or 'auto'.
     residualTicksRight: hang the residual histogram's axis on its right, for a caller that puts
     the two side by side.
     """
@@ -235,6 +273,8 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
         return
 
     fiducialRows, fiducialRMS = perFiducialRMS(fidsData)
+    rejectedRows, rejectedFiducials = perRejectedFiducial(fidsData)
+    showRejected = showRejected and len(rejectedFiducials)
     brokenRows, brokenCobraRMS = perBrokenCobraRMS(convergeData)
 
     # 'stable' is measured against the colour scale, so the scale cannot depend on it in turn.
@@ -278,6 +318,17 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
         mapAxes.quiverkey(Q, X=0.85, Y=0.1, U=arrowSize, label=f'{arrowSize} µm', labelpos='E',
                           coordinates='axes')
 
+        if showRejected:
+            mapAxes.quiver(rejectedFiducials.x_mm, rejectedFiducials.y_mm, rejectedFiducials.dx,
+                           rejectedFiducials.dy, color=REJECTED, alpha=0.7, scale=scale)
+
+    if showRejected:
+        mapAxes.scatter(rejectedFiducials.x_mm, rejectedFiducials.y_mm, marker='D', s=80,
+                        facecolors='none', edgecolors=REJECTED, linewidths=1.5)
+        for fiducial in rejectedFiducials.itertuples():
+            mapAxes.annotate(str(fiducial.fiducialId), xy=(fiducial.x_mm, fiducial.y_mm),
+                             xytext=(5, 4), textcoords='offset points', fontsize=8, color=REJECTED)
+
     plot.updateColorbar('fiducial', mapAxes, sc, label='Stability (µm)')
 
     positionRMS = medianOf(fiducialRMS.rms)
@@ -287,10 +338,17 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
 
     fiducialResidual = fiducialRows.residual.to_numpy(dtype=float)
     fiducialResidual = fiducialResidual[np.isfinite(fiducialResidual)]
-    vmaxResidual = float(fiducialResidual.max()) if len(fiducialResidual) else 1.0
+    rejectedResidual = rejectedRows.residual.to_numpy(dtype=float) if showRejected else np.array([])
+    rejectedResidual = rejectedResidual[np.isfinite(rejectedResidual)]
+    shownResidual = np.concatenate([fiducialResidual, rejectedResidual])
+    vmaxResidual = float(shownResidual.max()) if len(shownResidual) else 1.0
     __, edges, __ = residualAxes.hist(fiducialResidual, bins=bins, range=(0, vmaxResidual),
                                       alpha=0.7)
     residualMedian, residualSigma = markDistribution(residualAxes, fiducialResidual, edges, 'navy')
+
+    if len(rejectedResidual):
+        residualAxes.hist(rejectedResidual, bins=bins, range=(0, vmaxResidual), color=REJECTED,
+                          alpha=0.7)
 
     if showBroken:
         mapAxes.scatter(brokenCobraRMS.x, brokenCobraRMS.y, c=brokenCobraRMS.rms, marker='o', s=40,
@@ -326,8 +384,8 @@ def drawFiducialRMS(plot, mapAxes, rmsAxes, residualAxes, latestVisitId, visitId
         residualAxes.yaxis.tick_right()
         residualAxes.yaxis.set_label_position('right')
 
-    plot.fiducialSummary = matchedText(len(fiducialRMS), positionRMS, residualMedian,
-                                      residualSigma)
+    plot.fiducialSummary = matchedText(len(fiducialRMS), len(rejectedFiducials), positionRMS,
+                                       residualMedian, residualSigma)
 
     return int(visitId), convCount, convCount
 
@@ -362,12 +420,12 @@ class FiducialResiduals(pfiUtils.ConvergencePlot):
 
     def plot(self, latestVisitId, visitId=-1, vmin=0, vmax=15,
              addBrokenCobras=('none', 'stable', 'all'),
-             showTransformResidualArrows=True, bins=20, arrowSize='auto'):
+             showTransformResidualArrows=True, showRejected=False, bins=20, arrowSize='auto'):
         """Plot the latest dataset."""
         self.beginDraw()
         shown = drawFiducialRMS(self, self.axes[0], self.axes[1], self.axes[2], latestVisitId,
                                 visitId=visitId, vmin=vmin, vmax=vmax, addBrokenCobras=addBrokenCobras,
-                                showTransformResidualArrows=showTransformResidualArrows, bins=bins,
-                                arrowSize=arrowSize)
+                                showTransformResidualArrows=showTransformResidualArrows,
+                                showRejected=showRejected, bins=bins, arrowSize=arrowSize)
         self.decorateTitles((fiducialHeading(self),), shown)
         return bool(shown)
