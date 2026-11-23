@@ -78,6 +78,9 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         # 'auto' has nothing to read from a run that measured no cobra at a target, so keep the
         # range finite rather than handing matplotlib a NaN to bin over.
         measured = dist[np.isfinite(dist)]
+        # a home run lands hundreds of microns from its targets, off any range set for convergence.
+        if len(moving) and (moving.cobraCommand == CobraCommand.HOME).all():
+            vmin = vmax = 'auto'
         if vmin == 'auto':
             vmin = float(measured.min()) if len(measured) else 0.
         if vmax == 'auto':
@@ -125,7 +128,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         ax1.format_coord = self.cobraIdFiberIdFormatter
 
         # per-iteration histograms.
-        histData = convergeData.query(f'iteration>={minIter + offset}')
+        # a run shorter than minIter still shows its last iteration.
+        histData = convergeData.query(f'iteration>={min(minIter + offset, maxIter)}')
         cmap = plt.get_cmap('viridis')(np.linspace(1.0, 0, histData.iteration.nunique()))
         for i, (iterVal, group) in enumerate(histData.groupby('iteration')):
             group = self.selectMovingCobras(self.addPfsConfigInfo(group, pfsConfigDf).reset_index(),
@@ -154,7 +158,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
         # distribution tail runs along the bottom. A run with nothing to show has nothing to
         # name either, and matplotlib warns rather than drawing an empty box.
         if ax2.get_legend_handles_labels()[0]:
-            self.makeRoomForLegend(ax2, ax2.legend(loc='upper left', fontsize=8, framealpha=0.8))
+            self.makeRoomForLegend(ax2, ax2.legend(loc='upper left', framealpha=0.8))
 
         # cumulative distribution of the shown iteration on a twin axis.
         if self.cumAxis is None:
@@ -250,7 +254,7 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
 
     # a marker per target type on the map, the commonest type taking the plainest marker.
     targetMarkers = ((TargetType.SCIENCE, 'o', 20), (TargetType.SKY, '^', 22),
-                     (TargetType.FLUXSTD, '*', 40))
+                     (TargetType.FLUXSTD, '*', 40), (TargetType.HOME, 'o', 20))
 
     def markerLegend(self, mapAxes, moving, parked, uncommanded):
         """Name the markers in the map's empty corner, listing only the ones drawn."""
@@ -381,7 +385,8 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
 
         orDots takes the black dot cobras where a run drove nothing at a science target, for a
         caller that can use them: they were measured at every iteration, only the last hiding
-        them behind their dots.
+        them behind their dots. A run that drove cobras neither at a target nor at a dot sent
+        them home, and gives its HOME cobras, at their distance to home.
         """
         if not self.commandsRecorded(iterData):
             iterData = iterData.loc[self.goodIdx]
@@ -393,7 +398,11 @@ class ConvergenceMapHist(pfiUtils.ConvergencePlot):
             return iterData[keep]
 
         converging = iterData[iterData.cobraCommand == CobraCommand.CONVERGE]
-        if len(converging) or not orDots:
+        if len(converging):
             return converging
 
-        return iterData[iterData.cobraCommand == CobraCommand.BLACK_DOT]
+        toDot = iterData[iterData.cobraCommand == CobraCommand.BLACK_DOT]
+        if not len(toDot):
+            return iterData[iterData.cobraCommand == CobraCommand.HOME]
+
+        return toDot if orDots else converging
